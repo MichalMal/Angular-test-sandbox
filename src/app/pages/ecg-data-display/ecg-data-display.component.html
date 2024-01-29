@@ -1,0 +1,28 @@
+<div class="container">
+  <div class="row">
+    <div class="col-12">
+      <h1>EDF File Data</h1>
+      <div *ngIf="header">
+        <h2>Header</h2>
+        <p>version: {{header.version}}</p>
+        <p>Patient ID: {{header.patientId}}</p>
+        <p>Start Date: {{header.startDate}}</p>
+        <p>Start Time: {{header.startTime}}</p>
+        <p>Number of records: {{header.numberOfDataRecords}}</p>
+        <p>Duration of a record: {{header.durationOfDataRecord}}</p>
+        <p>Number of signals: {{header.numberOfSignals}}</p>
+      </div>
+
+      <div class="chart-block" *ngIf="signalHeaders">
+
+      </div>
+
+      <div *ngIf="isLoading" class="loading-screen">
+        <p>Loading...</p>
+      </div>
+      <div class="chart-block">
+        <canvas #chart></canvas>
+      </div>
+    </div>
+  </div>
+</div>
