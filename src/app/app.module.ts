@@ -1,6 +1,7 @@
 // core modules
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { HttpClientModule } from '@angular/common/http';
 
 // libraries 
 import { AppRoutingModule } from './app-routing.module';
@@ -17,9 +18,6 @@ import { HomeComponent } from './pages/home/home.component';
 import { ContactUsComponent } from './pages/contact-us/contact-us.component';
 import { EcgDataDisplayComponent } from './pages/ecg-data-display/ecg-data-display.component';
 
-// services
-import { EdfParserService } from './services/edf-parser.service';
-import { EdfDataService } from './services/edf-data.service';
 
 @NgModule({
   declarations: [
@@ -32,6 +30,7 @@ import { EdfDataService } from './services/edf-data.service';
   ],
   imports: [
     BrowserModule,
+    HttpClientModule,
     AppRoutingModule,
     NgbModule,
     NgChartsModule
