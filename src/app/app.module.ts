@@ -17,6 +17,7 @@ import { NavbarComponent } from './shared/navbar/navbar.component';
 import { HomeComponent } from './pages/home/home.component';
 import { ContactUsComponent } from './pages/contact-us/contact-us.component';
 import { EcgDataDisplayComponent } from './pages/ecg-data-display/ecg-data-display.component';
+import { TimeScaleComponent } from './components/time-scale/time-scale.component';
 
 
 @NgModule({
@@ -26,7 +27,8 @@ import { EcgDataDisplayComponent } from './pages/ecg-data-display/ecg-data-displ
     NavbarComponent,
     HomeComponent,
     ContactUsComponent,
-    EcgDataDisplayComponent
+    EcgDataDisplayComponent,
+    TimeScaleComponent
   ],
   imports: [
     BrowserModule,

@@ -8,9 +8,7 @@ import {
 } from '@angular/core';
 import { EdfDataService } from 'src/app/services/edf-data.service';
 import { Subscription } from 'rxjs';
-import { Chart } from 'chart.js';
-import zoomPlugin from 'chartjs-plugin-zoom';
-Chart.register(zoomPlugin);
+import * as echarts from 'echarts';
 import { Decimal } from 'decimal.js';
 import { Router } from '@angular/router';
 
@@ -25,7 +23,7 @@ export class EcgDataDisplayComponent
   responseData: any = {};
   private subscriptions: Subscription[] = [];
   isLoading: boolean = true;
-  chart: Chart | undefined;
+  chart: echarts.ECharts | undefined;
 
   @ViewChild('chart') chartRef!: ElementRef;
 
@@ -56,51 +54,7 @@ export class EcgDataDisplayComponent
       this.router.navigate(['/']);
     }
 
-    this.chart = new Chart(this.chartRef.nativeElement, {
-      type: 'line',
-      data: {
-        labels: [], // This will be filled with the channel numbers
-        datasets: [], // This will be filled with the signal data
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            type: 'linear',
-            position: 'bottom',
-            title: {
-              display: true,
-              text: 'Time',
-            },
-          },
-          y: {
-            display: true,
-            title: {
-              display: true,
-              text: 'Amplitude',
-            },
-          },
-        },
-        plugins: {
-          zoom: {
-            pan: {
-              enabled: true,
-              mode: 'x',
-              threshold: 10,
-            },
-            zoom: {
-              wheel: {
-                enabled: true,
-              },
-              pinch: {
-                enabled: true,
-              },
-              mode: 'x',
-            },
-          },
-        },
-      },
-    });
+    this.chart = echarts.init(this.chartRef.nativeElement);
 
     this.updateChart();
   }
@@ -109,8 +63,45 @@ export class EcgDataDisplayComponent
     this.isLoading = true;
     try {
       if (this.chart && this.responseData) {
-        this.chart.data.labels = [];
-        this.chart.data.datasets = [];
+        const option: echarts.EChartsOption = {
+          xAxis: {
+            type: 'value',
+            axisLabel: {
+              formatter: '{value}s',
+            },
+            axisPointer: {
+              type: 'shadow', // or 'line'
+            },
+          },
+          yAxis: {
+            type: 'value',
+            name: 'Amplitude(microvolts)',
+          },
+          legend: {
+            show: true,
+            selected: {},
+            // selectedMode: 'single',
+          },
+          tooltip: {
+            trigger: 'axis',
+            position: function (pt) {
+              return [pt[0], '10%'];
+            },
+          },
+          dataZoom: [
+            {
+              type: 'slider',
+              xAxisIndex: 0,
+              filterMode: 'empty',
+            },
+            {
+              type: 'inside',
+              xAxisIndex: 0,
+              filterMode: 'empty',
+            },
+          ],
+          series: [] as any[],
+        };
 
         const numberOfSignals = parseInt(this.responseData._header.nbSignals);
         let countDuration: Decimal = new Decimal(
@@ -118,65 +109,91 @@ export class EcgDataDisplayComponent
         );
 
         for (let i = 0; i < numberOfSignals; i++) {
-          if (i == 26 || i ==27) {
+          if (
+            this.responseData._header.signalInfo[i].label !== 'EDF Annotations'
+          ) {
             const numberOfSamplesPerTimeDuration = parseInt(
               this.responseData._header.signalInfo[i].nbOfSamples
             );
 
-            // console.log(
-            //   `Number of hz in Data Record ${i} with duration of ${countDuration} seconds: ${numberOfSamplesPerTimeDuration}`
-            // );
-
             let duration: Decimal = new Decimal(0);
 
             const color = this.getRandomColor();
-            let newDataSet = {
-              label: this.responseData._header.signalInfo[i].label,
-              borderColor: color,
-              backgroundColor: color,
-              data: [] as { x: number; y: number }[],
+            let newSeries: echarts.LineSeriesOption = {
+              name: this.responseData._header.signalInfo[i].label,
+              type: 'line',
+              sampling: 'max',
+              symbol: 'none',
+              data: [] as [number, number][],
+              step: 'middle',
+              itemStyle: {
+                color: color,
+              },
             };
 
-            // if (firstDataset){
-            //   newDataSet.hidden = false;
-            //   firstDataset = false;
-            // }
+            if (option.legend && !Array.isArray(option.legend)) {
+              option.legend.selected = option.legend.selected || {};
+              option.legend.selected[
+                `${this.responseData._header.signalInfo[i].label}`
+              ] = i === 0;
+            }
 
             this.responseData._rawSignals[i].forEach((dataRecordDuration) => {
-              if (duration.greaterThan(0) && duration.lessThan(10)) {
+              if (duration.greaterThan(0) && duration.lessThan(20)) {
                 Object.entries(dataRecordDuration).forEach(
                   ([hzIndex, value]) => {
-                    const data: { x: number; y: number } = {
-                      x: duration
+                    const data: [number, number] = [
+                      duration
                         .plus(
                           countDuration.times(
                             parseInt(hzIndex) / numberOfSamplesPerTimeDuration
                           )
                         )
                         .toNumber(),
-                      y: value as number,
-                    };
-                    newDataSet.data.push(data);
+                      value as number,
+                    ];
+                    newSeries.data?.push(data);
                   }
                 );
               }
               duration = duration.plus(countDuration);
             });
-            this.chart.data.datasets.push(newDataSet);
-            this.chart.update();
+
+            if (Array.isArray(option.series)) {
+              option.series.push(newSeries);
+            }
           }
         }
 
-        this.chart.data.datasets.forEach((dataset, index) => {
-          if (index == 0) {
-            dataset.hidden = false;
-          } else {
-            dataset.hidden = true;
-          }
-        });
+        this.chart.setOption(option);
 
-        // Update the chart
-        this.chart.update();
+        // Add dataZoom event listener
+        this.chart.on('dataZoom', (params: any) => {
+          var startValue = params.batch[0].start;
+          var endValue = params.batch[0].end;
+          var zoomLevel = endValue - startValue;
+          
+          var sampling;
+          if (zoomLevel > 80) {
+            sampling = 'min';
+          } else if (zoomLevel > 60) {
+            sampling = 'average';
+          } else if (zoomLevel > 20){
+            sampling = 'max';
+          } else {
+            sampling = 'original';
+          }
+
+          if (Array.isArray(option.series)) {
+            option.series.forEach(function (series) {
+              series["sampling"] = sampling;
+            });
+          } else if (option.series) {
+            option.series["sampling"] = sampling;
+          }
+
+          this.chart?.setOption(option);
+        });
       }
     } catch (error) {
       console.error(error);

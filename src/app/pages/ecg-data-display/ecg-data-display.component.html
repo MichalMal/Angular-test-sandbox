@@ -3,15 +3,6 @@
     <div class="col-12">
       <h1>EDF File Data</h1>
       <div *ngIf="this.responseData._header">
-
-
-
-
-
-
-
-
-
         
         <h2>Header</h2>
         <p>version: {{responseData._header.dataFormat}}</p>
@@ -24,12 +15,12 @@
         <p>Number of signals: {{responseData._header.nbSignals}}</p>
       </div>
 
-      <div *ngIf="isLoading" class="loading-screen">
-        <p>Loading...</p>
-      </div>
-      <div class="chart-block">
-        <canvas #chart></canvas>
-      </div>
     </div>
   </div>
+</div>
+<div *ngIf="isLoading" class="loading-screen">
+  <p>Loading...</ p>
+</div>
+<div class="chart-block container-fluid">
+  <div #chart style="width: 100%; height: 400px;"></div>
 </div>
