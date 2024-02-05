@@ -5,9 +5,12 @@ import {
   ViewChild,
   ElementRef,
   AfterViewInit,
+  Renderer2,
+  RendererFactory2,
 } from '@angular/core';
 import { EdfDataService } from 'src/app/services/edf-data.service';
-import { Subscription } from 'rxjs';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import * as echarts from 'echarts';
 import { Decimal } from 'decimal.js';
 import { Router } from '@angular/router';
@@ -21,17 +24,69 @@ export class EcgDataDisplayComponent
   implements OnInit, OnDestroy, AfterViewInit
 {
   responseData: any = {};
-  private subscriptions: Subscription[] = [];
   isLoading: boolean = true;
-  chart: echarts.ECharts | undefined;
+
+  private destroy$ = new Subject<void>();
+  private chart: echarts.ECharts | undefined;
+  private option: echarts.EChartsOption | null = null;
+  private renderer: Renderer2;
+  private resizeListener!: () => void;
+
+  timeScale = { start: 0, end: 3 };
 
   @ViewChild('chart') chartRef!: ElementRef;
 
-  constructor(private edfDataService: EdfDataService, private router: Router) {}
+  constructor(
+    private rendererFactory: RendererFactory2,
+    private edfDataService: EdfDataService,
+    private router: Router
+  ) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+  }
 
   ngOnInit(): void {
-    this.subscriptions.push(
-      this.edfDataService.dataRecords$.subscribe((response) => {
+    this.option = {
+      xAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '{value}s',
+        },
+        axisPointer: {
+          type: 'line', // or 'line'
+        },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Amplitude(microvolts)',
+      },
+      legend: {
+        show: true,
+        // selectedMode: 'single',
+      },
+      tooltip: {
+        trigger: 'axis',
+        position: function (pt) {
+          return [pt[0], '10%'];
+        },
+      },
+      dataZoom: [
+        {
+          type: 'slider',
+          xAxisIndex: 0,
+          filterMode: 'empty',
+        },
+        {
+          type: 'inside',
+          xAxisIndex: 0,
+          filterMode: 'empty',
+        },
+      ],
+      series: [] as any[],
+    };
+
+    this.edfDataService.dataRecords$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((response) => {
         console.log('Response from EdfDataService:', response);
         if (response) {
           this.responseData = response;
@@ -40,13 +95,7 @@ export class EcgDataDisplayComponent
           }
           this.isLoading = false;
         }
-      })
-    );
-  }
-
-  ngOnDestroy(): void {
-    // Unsubscribe from all subscriptions
-    this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+      });
   }
 
   ngAfterViewInit(): void {
@@ -55,54 +104,25 @@ export class EcgDataDisplayComponent
     }
 
     this.chart = echarts.init(this.chartRef.nativeElement);
+    this.chart?.on('dataZoom', this.handleDataZoom);
+    this.resizeListener = this.renderer.listen('window', 'resize', () => {
+      this.chart?.resize();
+    });
 
     this.updateChart();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.resizeListener) {
+      this.resizeListener();
+    }
+  }
   updateChart(): void {
     this.isLoading = true;
     try {
       if (this.chart && this.responseData) {
-        const option: echarts.EChartsOption = {
-          xAxis: {
-            type: 'value',
-            axisLabel: {
-              formatter: '{value}s',
-            },
-            axisPointer: {
-              type: 'shadow', // or 'line'
-            },
-          },
-          yAxis: {
-            type: 'value',
-            name: 'Amplitude(microvolts)',
-          },
-          legend: {
-            show: true,
-            selected: {},
-            // selectedMode: 'single',
-          },
-          tooltip: {
-            trigger: 'axis',
-            position: function (pt) {
-              return [pt[0], '10%'];
-            },
-          },
-          dataZoom: [
-            {
-              type: 'slider',
-              xAxisIndex: 0,
-              filterMode: 'empty',
-            },
-            {
-              type: 'inside',
-              xAxisIndex: 0,
-              filterMode: 'empty',
-            },
-          ],
-          series: [] as any[],
-        };
-
         const numberOfSignals = parseInt(this.responseData._header.nbSignals);
         let countDuration: Decimal = new Decimal(
           this.responseData._header.durationDataRecordsSec
@@ -122,7 +142,7 @@ export class EcgDataDisplayComponent
             let newSeries: echarts.LineSeriesOption = {
               name: this.responseData._header.signalInfo[i].label,
               type: 'line',
-              sampling: 'max',
+              sampling: 'lttb',
               symbol: 'none',
               data: [] as [number, number][],
               step: 'middle',
@@ -131,69 +151,52 @@ export class EcgDataDisplayComponent
               },
             };
 
-            if (option.legend && !Array.isArray(option.legend)) {
-              option.legend.selected = option.legend.selected || {};
-              option.legend.selected[
+            if (this.option?.legend && !Array.isArray(this.option.legend)) {
+              this.option.legend.selected = this.option.legend.selected || {};
+              this.option.legend.selected[
                 `${this.responseData._header.signalInfo[i].label}`
               ] = i === 0;
             }
 
-            this.responseData._rawSignals[i].forEach((dataRecordDuration) => {
-              if (duration.greaterThan(0) && duration.lessThan(20)) {
-                Object.entries(dataRecordDuration).forEach(
-                  ([hzIndex, value]) => {
-                    const data: [number, number] = [
-                      duration
-                        .plus(
-                          countDuration.times(
-                            parseInt(hzIndex) / numberOfSamplesPerTimeDuration
+            this.responseData._physicalSignals[i].forEach(
+              (dataRecordDuration) => {
+                if (
+                  duration.greaterThanOrEqualTo(this.timeScale.start) &&
+                  duration.lessThanOrEqualTo(this.timeScale.end)
+                ) {
+                  Object.entries(dataRecordDuration).forEach(
+                    ([hzIndex, value]) => {
+                      const data: [number, number] = [
+                        duration
+                          .plus(
+                            countDuration.times(
+                              parseInt(hzIndex) / numberOfSamplesPerTimeDuration
+                            )
                           )
-                        )
-                        .toNumber(),
-                      value as number,
-                    ];
-                    newSeries.data?.push(data);
-                  }
-                );
+                          .toNumber(),
+                        value as number,
+                      ];
+                      newSeries.data?.push(data);
+                    }
+                  );
+                }
+                duration = duration.plus(countDuration);
               }
-              duration = duration.plus(countDuration);
-            });
+            );
 
-            if (Array.isArray(option.series)) {
-              option.series.push(newSeries);
+            if (Array.isArray(this.option?.series)) {
+              this.option?.series.push(newSeries);
             }
           }
         }
 
-        this.chart.setOption(option);
+        // now officially trying to mark the qt intervals
 
-        // Add dataZoom event listener
-        this.chart.on('dataZoom', (params: any) => {
-          var startValue = params.batch[0].start;
-          var endValue = params.batch[0].end;
-          var zoomLevel = endValue - startValue;
-          
-          var sampling;
-          if (zoomLevel > 80) {
-            sampling = 'min';
-          } else if (zoomLevel > 60) {
-            sampling = 'average';
-          } else if (zoomLevel > 20){
-            sampling = 'max';
-          } else {
-            sampling = 'original';
-          }
+        this.markIntervals();
 
-          if (Array.isArray(option.series)) {
-            option.series.forEach(function (series) {
-              series["sampling"] = sampling;
-            });
-          } else if (option.series) {
-            option.series["sampling"] = sampling;
-          }
-
-          this.chart?.setOption(option);
-        });
+        if (this.option) {
+          this.chart?.setOption(this.option);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -201,8 +204,75 @@ export class EcgDataDisplayComponent
     this.isLoading = false;
   }
 
+  handleDataZoom = (params: any) => {
+    const { start, end } = this.getZoomValues(params);
+    const zoomLevel = end - start;
+    const sampling = this.getSamplingStrategy(zoomLevel);
+
+    if (Array.isArray(this.option?.series)) {
+      this.option?.series.forEach((series) => {
+        series['sampling'] = sampling;
+      });
+    } else if (this.option?.series) {
+      this.option.series['sampling'] = sampling;
+    }
+    if (this.option?.legend) {
+      let instanceOption: any = this.chart?.getOption()['legend'];
+      this.option.legend['selected'] = instanceOption[0].selected;
+      this.chart?.setOption(this.option);
+    }
+  };
+
+  getZoomValues(params: any): { start: number; end: number } {
+    let startValue: number;
+    let endValue: number;
+
+    try {
+      startValue = params.batch[0].start;
+      endValue = params.batch[0].end;
+    } catch {
+      startValue = params.start;
+      endValue = params.end;
+    }
+
+    return { start: startValue, end: endValue };
+  }
+
+  getSamplingStrategy(zoomLevel: number): string {
+    return zoomLevel > 20 ? 'lttb' : 'original';
+  }
+
   private getRandomColor(): string {
     // Function to generate a random hex color
     return '#' + Math.floor(Math.random() * 16777215).toString(16);
+  }
+
+  onTimeScaleChange(newTimeScale: { start: number; end: number }): void {
+    // Update the chart with the new timescale
+
+    this.option!.series = [];
+    this.timeScale = newTimeScale;
+    this.updateChart();
+  }
+
+  private markIntervals() {
+    let seriesStrip = this.option?.series![0]!.data;
+    let checkPeriod = new Decimal(0);
+    let checkValue = new Decimal(0);
+    seriesStrip.forEach((dataPoint: [number, number], index: number) => {
+      if (checkPeriod.greaterThan(dataPoint[0])) {
+        checkPeriod = checkPeriod.plus(0.5);
+
+        if (
+          checkValue.minus(dataPoint[1]).greaterThan(100) ||
+          checkValue.minus(dataPoint[1]).lessThan(-100)
+        ) {
+
+          
+        }
+
+        checkValue = new Decimal(dataPoint[1]);
+      }
+    });
   }
 }

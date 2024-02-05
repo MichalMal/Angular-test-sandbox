@@ -1,14 +1,13 @@
-<div class="container">
-  <div class="row">
-    <div class="col-12">
-      <h1>EDF File Data</h1>
-      <div *ngIf="this.responseData._header">
-        
-        <h2>Header</h2>
+<div class="container py-4">
+  <div *ngIf="this.responseData._header">
+    <div class="row">
+      <div class="col-6">
         <p>version: {{responseData._header.dataFormat}}</p>
         <p>Patient ID: {{responseData._header.patientId}}</p>
         <p>Local ID: {{responseData._header.localRecordingId}}</p>
         <p>Start DateTime: {{responseData._header.recordingDate}}</p>
+      </div>
+      <div class="col-6">
         <p>Reserved: {{responseData._header.reserved}}</p>
         <p>Number of records: {{responseData._header.nbDataRecords}}</p>
         <p>Duration of a record: {{responseData._header.durationDataRecordsSec}}</p>
@@ -18,9 +17,12 @@
     </div>
   </div>
 </div>
+<div class="chart-block container-fluid">
+  <app-time-scale [timeScale]="timeScale" (timeScaleChange)="onTimeScaleChange($event)"></app-time-scale>
+  <div #chart style="width: 100%; height: 400px;"></div>
+</div>
+
+
 <div *ngIf="isLoading" class="loading-screen">
   <p>Loading...</ p>
-</div>
-<div class="chart-block container-fluid">
-  <div #chart style="width: 100%; height: 400px;"></div>
 </div>
