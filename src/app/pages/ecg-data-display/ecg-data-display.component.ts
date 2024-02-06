@@ -25,14 +25,18 @@ export class EcgDataDisplayComponent
 {
   responseData: any = {};
   isLoading: boolean = true;
+  timeScale = { start: 0, end: 3 };
+  signalSelection = '';
+  signalSelectionIndex = 0;
+  RRIntervalsPerSample: [[{ index: number; value: Decimal }]] = [
+    [{ index: 0, value: new Decimal(0) }],
+  ];
 
   private destroy$ = new Subject<void>();
   private chart: echarts.ECharts | undefined;
   private option: echarts.EChartsOption | null = null;
   private renderer: Renderer2;
   private resizeListener!: () => void;
-
-  timeScale = { start: 0, end: 3 };
 
   @ViewChild('chart') chartRef!: ElementRef;
 
@@ -79,6 +83,7 @@ export class EcgDataDisplayComponent
           type: 'inside',
           xAxisIndex: 0,
           filterMode: 'empty',
+          moveOnMouseMove: false,
         },
       ],
       series: [] as any[],
@@ -87,9 +92,10 @@ export class EcgDataDisplayComponent
     this.edfDataService.dataRecords$
       .pipe(takeUntil(this.destroy$))
       .subscribe((response) => {
-        console.log('Response from EdfDataService:', response);
+        // console.log('Response from EdfDataService:', response);
         if (response) {
           this.responseData = response;
+          this.signalSelection = this.responseData._header.signalInfo[0].label;
           if (this.chart) {
             this.updateChart();
           }
@@ -105,6 +111,8 @@ export class EcgDataDisplayComponent
 
     this.chart = echarts.init(this.chartRef.nativeElement);
     this.chart?.on('dataZoom', this.handleDataZoom);
+    this.chart?.on('legendselected', this.handleLegendSelect);
+    this.chart?.getZr().on('click', this.handleGraphClick);
     this.resizeListener = this.renderer.listen('window', 'resize', () => {
       this.chart?.resize();
     });
@@ -149,6 +157,23 @@ export class EcgDataDisplayComponent
               itemStyle: {
                 color: color,
               },
+              markLine: {
+                symbol: 'none',
+                // label: {
+                //   formatter: function(params) {
+                //     console.log('params: ', params);
+                //     return params.data['xAxis'];
+                //   },
+                // },
+                data:
+                  this.RRIntervalsPerSample &&
+                  this.RRIntervalsPerSample[i] &&
+                  this.RRIntervalsPerSample[i][0].index !== 0
+                    ? this.RRIntervalsPerSample[i].map((time) => {
+                        return { xAxis: time['value'].toNumber() };
+                      })
+                    : [],
+              },
             };
 
             if (this.option?.legend && !Array.isArray(this.option.legend)) {
@@ -190,10 +215,6 @@ export class EcgDataDisplayComponent
           }
         }
 
-        // now officially trying to mark the qt intervals
-
-        this.markIntervals();
-
         if (this.option) {
           this.chart?.setOption(this.option);
         }
@@ -208,19 +229,11 @@ export class EcgDataDisplayComponent
     const { start, end } = this.getZoomValues(params);
     const zoomLevel = end - start;
     const sampling = this.getSamplingStrategy(zoomLevel);
-
-    if (Array.isArray(this.option?.series)) {
-      this.option?.series.forEach((series) => {
-        series['sampling'] = sampling;
-      });
-    } else if (this.option?.series) {
-      this.option.series['sampling'] = sampling;
-    }
-    if (this.option?.legend) {
-      let instanceOption: any = this.chart?.getOption()['legend'];
-      this.option.legend['selected'] = instanceOption[0].selected;
-      this.chart?.setOption(this.option);
-    }
+    let option = this.chart?.getOption();
+    (option!['series'] as []).forEach((_, i) => {
+      option!['series']![i]['sampling'] = sampling;
+    });
+    this.chart?.setOption(option!);
   };
 
   getZoomValues(params: any): { start: number; end: number } {
@@ -255,24 +268,110 @@ export class EcgDataDisplayComponent
     this.updateChart();
   }
 
-  private markIntervals() {
-    let seriesStrip = this.option?.series![0]!.data;
-    let checkPeriod = new Decimal(0);
-    let checkValue = new Decimal(0);
-    seriesStrip.forEach((dataPoint: [number, number], index: number) => {
-      if (checkPeriod.greaterThan(dataPoint[0])) {
-        checkPeriod = checkPeriod.plus(0.5);
+  handleGraphClick = (params: any) => {
+    let pointInPixel = [params.offsetX, params.offsetY];
+    let option = this.chart?.getOption();
+    if (this.chart?.containPixel('grid', pointInPixel)) {
+      let pointInData = this.chart?.convertFromPixel('series', pointInPixel);
+      let seriesCount = option!['series'] as [];
+      seriesCount!.forEach((series: any, i: number) => {
+        if (option!['legend']![0]['selected'][series.name]) {
+          let closestSample = series['data'].reduce((prev, curr) => {
+            return Math.abs(curr[0] - pointInData[0]) <
+              Math.abs(prev[0] - pointInData[0])
+              ? curr
+              : prev;
+          });
+          let closestSampleIndex = series['data'].findIndex(
+            (sample) =>
+              sample[0] === closestSample[0] && sample[1] === closestSample[1]
+          );
+          let highestYValue = series['data'][closestSampleIndex][1];
+          let highestYValueIndex = closestSampleIndex;
+          while (series['data'][highestYValueIndex + 1][1] > highestYValue) {
+            highestYValueIndex++;
+            highestYValue = series['data'][highestYValueIndex][1];
+          }
+          while (series['data'][highestYValueIndex - 1][1] > highestYValue) {
+            highestYValueIndex--;
+            highestYValue = series['data'][highestYValueIndex][1];
+          }
 
-        if (
-          checkValue.minus(dataPoint[1]).greaterThan(100) ||
-          checkValue.minus(dataPoint[1]).lessThan(-100)
-        ) {
+          let peakSample = series['data'][highestYValueIndex];
+          console.log(
+            'highestYValue: ' +
+              highestYValue +
+              ' at index: ' +
+              highestYValueIndex
+          );
+          console.log('peakSample: ', peakSample);
 
-          
+          if (
+            !this.RRIntervalsPerSample![i].some((obj) =>
+              Object.values(obj).some(
+                (item) =>
+                  item instanceof Decimal &&
+                  item.equals(new Decimal(peakSample[0]))
+              )
+            )
+          ) {
+            if (
+              this.RRIntervalsPerSample![i] === undefined ||
+              this.RRIntervalsPerSample![i][0].index === 0
+            ) {
+              this.RRIntervalsPerSample![i] = [
+                {
+                  index: highestYValueIndex,
+                  value: new Decimal(peakSample[0]),
+                },
+              ];
+            } else {
+              this.RRIntervalsPerSample![i].push({
+                index: highestYValueIndex,
+                value: new Decimal(peakSample[0]),
+              });
+            }
+
+            this.RRIntervalsPerSample![i].sort((a, b) => a.index - b.index);
+
+            let data = [{ xAxis: Decimal }];
+            if (option!['series']![i]['markLine']['data']) {
+              option!['series']![i]['markLine']['data'].push({
+                xAxis: peakSample[0],
+              });
+              data = option!['series']![i]['markLine']['data'];
+            } else {
+              data = [{ xAxis: peakSample[0] }];
+            }
+
+            option!['series']![i]['markLine'] = {
+              data: data,
+            };
+
+            console.log(this.RRIntervalsPerSample![i]);
+            this.chart?.setOption(option!);
+          }
         }
+      });
+    }
+  };
 
-        checkValue = new Decimal(dataPoint[1]);
+  handleLegendSelect = (params: any) => {
+    console.log('params: ', params);
+  };
+
+  findValueAt(signalIndex: number, timeIndex: number): any {
+    let value = 0;
+    let series = this.option?.series;
+    if (series) {
+      let data = series[signalIndex].data;
+      if (data) {
+        let found = data[timeIndex];
+        if (found) {
+          return found[1];
+        }
       }
-    });
+    }
+    return 'not found';
   }
 }
