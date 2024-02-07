@@ -26,10 +26,8 @@ export class EcgDataDisplayComponent
   responseData: any = {};
   isLoading: boolean = true;
   timeScale = { start: 0, end: 3 };
-  signalSelection = '';
-  signalSelectionIndex = 0;
-  RRIntervalsPerSample: [[{ index: number; value: Decimal }]] = [
-    [{ index: 0, value: new Decimal(0) }],
+  RRIntervalsPerSample: [[{ mvolts: number; time: Decimal }]] = [
+    [{ mvolts: 0, time: new Decimal(0) }],
   ];
 
   private destroy$ = new Subject<void>();
@@ -95,7 +93,6 @@ export class EcgDataDisplayComponent
         // console.log('Response from EdfDataService:', response);
         if (response) {
           this.responseData = response;
-          this.signalSelection = this.responseData._header.signalInfo[0].label;
           if (this.chart) {
             this.updateChart();
           }
@@ -168,9 +165,9 @@ export class EcgDataDisplayComponent
                 data:
                   this.RRIntervalsPerSample &&
                   this.RRIntervalsPerSample[i] &&
-                  this.RRIntervalsPerSample[i][0].index !== 0
-                    ? this.RRIntervalsPerSample[i].map((time) => {
-                        return { xAxis: time['value'].toNumber() };
+                  !this.RRIntervalsPerSample[i][0].time.equals(new Decimal(0))
+                    ? this.RRIntervalsPerSample[i].map((interval) => {
+                        return { xAxis: interval['time'].toNumber() };
                       })
                     : [],
               },
@@ -306,6 +303,17 @@ export class EcgDataDisplayComponent
           );
           console.log('peakSample: ', peakSample);
 
+
+
+          if (!this.RRIntervalsPerSample![i]) {
+            this.RRIntervalsPerSample![i] = [
+              {
+                mvolts: 0,
+                time: new Decimal(0),
+              },
+            ]
+          }
+
           if (
             !this.RRIntervalsPerSample![i].some((obj) =>
               Object.values(obj).some(
@@ -317,22 +325,22 @@ export class EcgDataDisplayComponent
           ) {
             if (
               this.RRIntervalsPerSample![i] === undefined ||
-              this.RRIntervalsPerSample![i][0].index === 0
+              this.RRIntervalsPerSample![i][0].time.equals(new Decimal(0))
             ) {
               this.RRIntervalsPerSample![i] = [
                 {
-                  index: highestYValueIndex,
-                  value: new Decimal(peakSample[0]),
+                  mvolts: highestYValueIndex,
+                  time: new Decimal(peakSample[0]),
                 },
               ];
             } else {
               this.RRIntervalsPerSample![i].push({
-                index: highestYValueIndex,
-                value: new Decimal(peakSample[0]),
+                mvolts: highestYValueIndex,
+                time: new Decimal(peakSample[0]),
               });
             }
 
-            this.RRIntervalsPerSample![i].sort((a, b) => a.index - b.index);
+            this.RRIntervalsPerSample![i].sort((a, b) => a.time.toNumber() - b.time.toNumber());
 
             let data = [{ xAxis: Decimal }];
             if (option!['series']![i]['markLine']['data']) {
@@ -348,7 +356,7 @@ export class EcgDataDisplayComponent
               data: data,
             };
 
-            console.log(this.RRIntervalsPerSample![i]);
+            console.log(this.RRIntervalsPerSample);
             this.chart?.setOption(option!);
           }
         }

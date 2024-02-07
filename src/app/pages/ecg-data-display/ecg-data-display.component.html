@@ -24,16 +24,19 @@
 
 <div class="container py-4">
   <div class="row">
-    <div class="col-12">
-      <h1>
-        This is where th calculation data will go
-      </h1>
-      <span>Showing data for Signal: {{signalSelection}} - index: {{signalSelectionIndex}}</span>
-
-      <div class="row" *ngIf="RRIntervalsPerSample && RRIntervalsPerSample[signalSelectionIndex][0].index !== 0">
-        <div class="col" *ngFor="let time of RRIntervalsPerSample[signalSelectionIndex]; index as i">
-          <b>RR interval {{i+1}} at {{findValueAt(signalSelectionIndex ,time.index)}}</b>
-          <p>value: {{time.value}}</p>
+    <div class="col-12 card" *ngFor="let sample of RRIntervalsPerSample; index as sgnlI">
+      <div class="card-header">
+        Showing RR intervals for Signal: {{responseData._header.signalInfo[sgnlI].label}} - index:
+        {{sgnlI}}
+      </div>
+      <div class="card-body">
+        <div class="row" *ngIf="RRIntervalsPerSample && RRIntervalsPerSample[sgnlI][0].time.toNumber() !== 0">
+          <div class="col" *ngFor="let interval of sample; index as i">
+            <p>
+              RR interval {{i+1}} at {{findValueAt(sgnlI ,interval.mvolts)}} <br>
+              value: {{interval.time.toNumber()}}
+            </p>
+          </div>
         </div>
       </div>
     </div>
