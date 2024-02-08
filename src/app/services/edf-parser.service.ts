@@ -1,26 +1,34 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { EdfDataService } from './edf-data.service';
+import { Observable } from 'rxjs';
+import { EdfDecoder } from 'edfdecoder';
 
 @Injectable({
   providedIn: 'root',
 })
 export class EdfParserService {
-  private apiUrl = 'http://localhost:3000/api';
 
-  constructor(private http: HttpClient, private edfDataService: EdfDataService) {}
+  constructor() {}
 
   async uploadEdfFile(file: File): Promise<Observable<any>> {
-    const formData = new FormData();
-    formData.append('edfFile', file);
 
-    return this.http.post(`${this.apiUrl}/upload-edf`, formData).pipe(
-      catchError((error) => {
-        console.error('Error uploading EDF file:', error);
-        return throwError(() => new Error(error.message));
-      })
-    );
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const arrayBuffer = (event.target as FileReader).result as ArrayBuffer;
+          const decoder = new EdfDecoder();
+          decoder.setInput(arrayBuffer)
+          console.log("Decoding...");
+          decoder.decode();
+          const edf = decoder.getOutput();
+          resolve(edf);
+
+        } catch (error) {
+          console.error('Error parsing EDF file:', error);
+          reject(error);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
   }
 }

@@ -26,9 +26,10 @@ export class EcgDataDisplayComponent
   responseData: any = {};
   isLoading: boolean = true;
   timeScale = { start: 0, end: 3 };
-  RRIntervalsPerSample: [[{ mvolts: number; time: Decimal }]] = [
-    [{ mvolts: 0, time: new Decimal(0) }],
-  ];
+  RRIntervalsPerSample: [
+    [{ mvolts: number; time: Decimal; sampleIndex: number }]
+  ] = [[{ mvolts: 0, time: new Decimal(0), sampleIndex: 0 }]];
+  QTIntervalsPerSignal: Decimal[][][] = [];
 
   private destroy$ = new Subject<void>();
   private chart: echarts.ECharts | undefined;
@@ -171,6 +172,28 @@ export class EcgDataDisplayComponent
                       })
                     : [],
               },
+              markArea: {
+                itemStyle: {
+                  color: 'rgba(255, 173, 177, 0.4)',
+                },
+                data:
+                  this.QTIntervalsPerSignal &&
+                  this.QTIntervalsPerSignal[i] &&
+                  this.QTIntervalsPerSignal[i][0]
+                    ? this.QTIntervalsPerSignal[i].map((interval) => {
+                        return [
+                          {
+                            name:
+                              'QT Interval: ' + interval[2].toNumber() + 's',
+                            xAxis: interval[0].toNumber(),
+                          },
+                          {
+                            xAxis: interval[1].toNumber(),
+                          },
+                        ];
+                      })
+                    : [],
+              },
             };
 
             if (this.option?.legend && !Array.isArray(this.option.legend)) {
@@ -295,23 +318,15 @@ export class EcgDataDisplayComponent
           }
 
           let peakSample = series['data'][highestYValueIndex];
-          console.log(
-            'highestYValue: ' +
-              highestYValue +
-              ' at index: ' +
-              highestYValueIndex
-          );
-          console.log('peakSample: ', peakSample);
-
-
 
           if (!this.RRIntervalsPerSample![i]) {
             this.RRIntervalsPerSample![i] = [
               {
                 mvolts: 0,
                 time: new Decimal(0),
+                sampleIndex: 0,
               },
-            ]
+            ];
           }
 
           if (
@@ -331,16 +346,20 @@ export class EcgDataDisplayComponent
                 {
                   mvolts: highestYValueIndex,
                   time: new Decimal(peakSample[0]),
+                  sampleIndex: highestYValueIndex,
                 },
               ];
             } else {
               this.RRIntervalsPerSample![i].push({
                 mvolts: highestYValueIndex,
                 time: new Decimal(peakSample[0]),
+                sampleIndex: highestYValueIndex,
               });
             }
 
-            this.RRIntervalsPerSample![i].sort((a, b) => a.time.toNumber() - b.time.toNumber());
+            this.RRIntervalsPerSample![i].sort(
+              (a, b) => a.time.toNumber() - b.time.toNumber()
+            );
 
             let data = [{ xAxis: Decimal }];
             if (option!['series']![i]['markLine']['data']) {
@@ -356,7 +375,6 @@ export class EcgDataDisplayComponent
               data: data,
             };
 
-            console.log(this.RRIntervalsPerSample);
             this.chart?.setOption(option!);
           }
         }
@@ -381,5 +399,122 @@ export class EcgDataDisplayComponent
       }
     }
     return 'not found';
+  }
+
+  calculateQTIntervals(signalIndex: number): void {
+    let option = this.chart?.getOption();
+    let QWaveTimes: Decimal[] = this.getQWaveTimes(signalIndex);
+    let TWaveTimes: Decimal[] = this.getTWaveTimes(signalIndex);
+    let data = [[{ name: '', xAxis: 0 }, { xAxis: 0 }]];
+
+    if (QWaveTimes.length !== TWaveTimes.length) {
+      console.error('Mismatch in Q and T wave counts');
+    }
+
+    for (let i = 0; i < QWaveTimes.length; i++) {
+      let Q = new Decimal(QWaveTimes[i]);
+      let T = new Decimal(TWaveTimes[i]);
+
+      let QTInterval = T.minus(Q);
+
+      if (!this.QTIntervalsPerSignal![signalIndex]) {
+        this.QTIntervalsPerSignal![signalIndex] = [];
+      }
+      if (!this.QTIntervalsPerSignal![signalIndex][i]) {
+        this.QTIntervalsPerSignal![signalIndex][i] = [];
+      }
+      this.QTIntervalsPerSignal![signalIndex][i][0] = Q;
+      this.QTIntervalsPerSignal![signalIndex][i][1] = T;
+      this.QTIntervalsPerSignal![signalIndex][i][2] = QTInterval;
+
+
+      if (option!['series']![signalIndex]['markArea']['data']) {
+        option!['series']![signalIndex]['markArea']['data'].push([
+          {
+            name: 'QT Interval',
+            xAxis: this.QTIntervalsPerSignal![signalIndex][i][0].toNumber(),
+          },
+          {
+            xAxis: this.QTIntervalsPerSignal![signalIndex][i][1].toNumber(),
+          },
+        ]);
+        data = option!['series']![signalIndex]['markArea']['data'];
+      } else {
+        data = [
+          [
+            {
+              name: 'QT Interval',
+              xAxis: this.QTIntervalsPerSignal![signalIndex][i][0].toNumber(),
+            },
+            {
+              xAxis: this.QTIntervalsPerSignal![signalIndex][i][1].toNumber(),
+            },
+          ],
+        ];
+      }
+
+    }
+      option!['series']![signalIndex]['markArea'] = {
+        label: {
+          position: 'insideTop',
+          color: '#000',
+        },
+        itemStyle: {
+          color: 'rgba(255, 173, 177, 0.4)',
+        },
+        data: data,
+      };
+
+      console.log('chart markArea: ', option!['series']![signalIndex]['markArea']);
+
+      this.chart?.setOption(option!);
+  }
+
+  getQWaveTimes(signalIndex: number): Decimal[] {
+    let QWaveTimes: Decimal[] = [];
+    let signalData = this.chart?.getOption()!['series']![signalIndex].data;
+
+    this.RRIntervalsPerSample[signalIndex].forEach((interval, i) => {
+      let lowestYValue = signalData[interval.sampleIndex][1];
+      let lowestYValueIndex = interval.sampleIndex;
+
+      while (signalData[lowestYValueIndex - 1][1] < lowestYValue) {
+        lowestYValueIndex--;
+        lowestYValue = signalData[lowestYValueIndex][1];
+      }
+
+      QWaveTimes.push(signalData[lowestYValueIndex][0]);
+    });
+    return QWaveTimes;
+  }
+
+  getTWaveTimes(signalIndex: number): Decimal[] {
+    let TWaveTimes: Decimal[] = [];
+    let signalData = this.chart?.getOption()!['series']![signalIndex].data;
+    this.RRIntervalsPerSample[signalIndex].forEach((interval, i) => {});
+
+    this.RRIntervalsPerSample[signalIndex].forEach((interval, i) => {
+      let lowestYValue = signalData[interval.sampleIndex][1];
+      let lowestYValueIndex = interval.sampleIndex;
+
+      while (signalData[lowestYValueIndex + 1][1] < lowestYValue) {
+        lowestYValueIndex++;
+        lowestYValue = signalData[lowestYValueIndex][1];
+      }
+
+      while (signalData[lowestYValueIndex + 1][1] > lowestYValue) {
+        lowestYValueIndex++;
+        lowestYValue = signalData[lowestYValueIndex][1];
+      }
+
+      while (signalData[lowestYValueIndex + 1][1] < lowestYValue) {
+        lowestYValueIndex++;
+        lowestYValue = signalData[lowestYValueIndex][1];
+      }
+
+      TWaveTimes.push(signalData[lowestYValueIndex][0]);
+    });
+
+    return TWaveTimes;
   }
 }
