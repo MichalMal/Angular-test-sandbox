@@ -1,13 +1,16 @@
 <div class="container">
-<div class="row my-4">
-    <div class="col-6">
-        <label for="time-scale-start">Start: </label>
-        <input type="number" id="time-scale-start" [(ngModel)]="timeScale.start"
-            (change)="onTimeScaleChange(timeScale)" />
+    <div class="row my-4">
+        <div class="col-6">
+            <label for="time-scale-start" class="form-label">Start: </label>
+            <input type="number" class="form-control" id="time-scale-start" [(ngModel)]="timeScale.start"
+                (change)="onTimeScaleChange(timeScale)" />
+            <div id="time-scale-start-help" class="form-text">{{addSeconds(timeScale.start)}}</div>
+        </div>
+        <div class="col-6">
+            <label for="time-scale-end" class="form-label">End: </label>
+            <input type="number" class="form-control" id="time-scale-end" [(ngModel)]="timeScale.end"
+                (change)="onTimeScaleChange(timeScale)" />
+            <div id="time-scale-start-help" class="form-text">{{addSeconds(timeScale.end)}}</div>
+        </div>
     </div>
-    <div class="col-6">
-        <label for="time-scale-end">End: </label>
-        <input type="number" id="time-scale-end" [(ngModel)]="timeScale.end" (change)="onTimeScaleChange(timeScale)" />
-    </div>
-</div>
 </div>

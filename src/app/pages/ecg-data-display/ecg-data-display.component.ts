@@ -25,7 +25,7 @@ export class EcgDataDisplayComponent
 {
   responseData: any = {};
   isLoading: boolean = true;
-  timeScale = { start: 0, end: 3 };
+  timeScale = { start: 0, end: 4000 };
   RRIntervalsPerSample: [
     [{ mvolts: number; time: Decimal; sampleIndex: number }]
   ] = [[{ mvolts: 0, time: new Decimal(0), sampleIndex: 0 }]];
@@ -50,21 +50,35 @@ export class EcgDataDisplayComponent
   ngOnInit(): void {
     this.option = {
       xAxis: {
-        type: 'value',
         axisLabel: {
-          formatter: '{value}s',
+          formatter: '{value}ms',
         },
-        axisPointer: {
-          type: 'line', // or 'line'
+        maxInterval: 200,
+        minInterval: 200,
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: "#999"
+          },
         },
+        minorTick: {
+          show: true,
+          splitNumber: 5
+        },
+        minorSplitLine: {
+          show: true,
+          lineStyle: {
+            color: "#ddd"
+          }
+        }
       },
       yAxis: {
         type: 'value',
-        name: 'Amplitude(microvolts)',
+        name: 'Amplitude(microvolts)',        
       },
       legend: {
         show: true,
-        // selectedMode: 'single',
+        selectedMode: 'single',
       },
       tooltip: {
         trigger: 'axis',
@@ -91,7 +105,7 @@ export class EcgDataDisplayComponent
     this.edfDataService.dataRecords$
       .pipe(takeUntil(this.destroy$))
       .subscribe((response) => {
-        // console.log('Response from EdfDataService:', response);
+        console.log('Response from EdfDataService:', response);
         if (response) {
           this.responseData = response;
           if (this.chart) {
@@ -109,7 +123,6 @@ export class EcgDataDisplayComponent
 
     this.chart = echarts.init(this.chartRef.nativeElement);
     this.chart?.on('dataZoom', this.handleDataZoom);
-    this.chart?.on('legendselected', this.handleLegendSelect);
     this.chart?.getZr().on('click', this.handleGraphClick);
     this.resizeListener = this.renderer.listen('window', 'resize', () => {
       this.chart?.resize();
@@ -132,7 +145,7 @@ export class EcgDataDisplayComponent
         const numberOfSignals = parseInt(this.responseData._header.nbSignals);
         let countDuration: Decimal = new Decimal(
           this.responseData._header.durationDataRecordsSec
-        );
+        ).times(1000);
 
         for (let i = 0; i < numberOfSignals; i++) {
           if (
@@ -153,9 +166,10 @@ export class EcgDataDisplayComponent
               data: [] as [number, number][],
               step: 'middle',
               itemStyle: {
-                color: color,
+                color: '#2e2491',
               },
               markLine: {
+                silent: true,
                 symbol: 'none',
                 // label: {
                 //   formatter: function(params) {
@@ -173,6 +187,11 @@ export class EcgDataDisplayComponent
                     : [],
               },
               markArea: {
+                silent: true,
+                label: {
+                  position: 'insideTop',
+                  color: '#000',
+                },
                 itemStyle: {
                   color: 'rgba(255, 173, 177, 0.4)',
                 },
@@ -272,7 +291,7 @@ export class EcgDataDisplayComponent
   }
 
   getSamplingStrategy(zoomLevel: number): string {
-    return zoomLevel > 20 ? 'lttb' : 'original';
+    return zoomLevel > 50 ? 'lttb' : 'original';
   }
 
   private getRandomColor(): string {
@@ -372,6 +391,8 @@ export class EcgDataDisplayComponent
             }
 
             option!['series']![i]['markLine'] = {
+              silent: true,
+              symbol: 'none',
               data: data,
             };
 
@@ -382,12 +403,7 @@ export class EcgDataDisplayComponent
     }
   };
 
-  handleLegendSelect = (params: any) => {
-    console.log('params: ', params);
-  };
-
   findValueAt(signalIndex: number, timeIndex: number): any {
-    let value = 0;
     let series = this.option?.series;
     if (series) {
       let data = series[signalIndex].data;
@@ -455,6 +471,7 @@ export class EcgDataDisplayComponent
 
     }
       option!['series']![signalIndex]['markArea'] = {
+        silent: true,
         label: {
           position: 'insideTop',
           color: '#000',
@@ -464,8 +481,6 @@ export class EcgDataDisplayComponent
         },
         data: data,
       };
-
-      console.log('chart markArea: ', option!['series']![signalIndex]['markArea']);
 
       this.chart?.setOption(option!);
   }

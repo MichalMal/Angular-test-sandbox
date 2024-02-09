@@ -7,12 +7,20 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 })
 export class TimeScaleComponent {
 
-
+  @Input() dateTimeOfRecord: Date = new Date();
   @Input() timeScale: {start: number, end: number} = {start: 0, end: 0};
   @Output() timeScaleChange = new EventEmitter<{start: number, end: number}>();
 
   onTimeScaleChange(newTimeScale: {start: number, end: number}): void {
     this.timeScale = newTimeScale;
     this.timeScaleChange.emit(this.timeScale);
+  }
+
+  addSeconds(seconds) {
+    // Making a copy with the Date() constructor
+    const dateCopy = new Date(this.dateTimeOfRecord);
+    dateCopy.setSeconds(this.dateTimeOfRecord.getSeconds() + seconds);
+  
+    return dateCopy;
   }
 }
