@@ -26,6 +26,7 @@ export class EcgDataDisplayComponent
   responseData: any = {};
   isLoading: boolean = true;
   timeScale = { start: 0, end: 4000 };
+  
   RRIntervalsPerSample: [
     [{ mvolts: number; time: Decimal; sampleIndex: number }]
   ] = [[{ mvolts: 0, time: new Decimal(0), sampleIndex: 0 }]];
@@ -58,23 +59,23 @@ export class EcgDataDisplayComponent
         splitLine: {
           show: true,
           lineStyle: {
-            color: "#999"
+            color: '#999',
           },
         },
         minorTick: {
           show: true,
-          splitNumber: 5
+          splitNumber: 5,
         },
         minorSplitLine: {
           show: true,
           lineStyle: {
-            color: "#ddd"
-          }
-        }
+            color: '#ddd',
+          },
+        },
       },
       yAxis: {
         type: 'value',
-        name: 'Amplitude(microvolts)',        
+        name: 'Amplitude(microvolts)',
       },
       legend: {
         show: true,
@@ -86,16 +87,25 @@ export class EcgDataDisplayComponent
           return [pt[0], '10%'];
         },
       },
+      brush: {
+        toolbox: ['clear'],
+        xAxisIndex: 'all',
+        yAxisIndex: 'none',
+        transformable: false,
+        brushStyle: {
+          borderWidth: 1,
+          color: 'rgba(120,140,180,0.5)',
+          borderColor: 'rgba(120,140,180,0.8)'
+        },
+      },
       dataZoom: [
         {
           type: 'slider',
           xAxisIndex: 0,
-          filterMode: 'empty',
         },
         {
           type: 'inside',
           xAxisIndex: 0,
-          filterMode: 'empty',
           moveOnMouseMove: false,
         },
       ],
@@ -123,12 +133,28 @@ export class EcgDataDisplayComponent
 
     this.chart = echarts.init(this.chartRef.nativeElement);
     this.chart?.on('dataZoom', this.handleDataZoom);
-    this.chart?.getZr().on('click', this.handleGraphClick);
+    this.chart?.on('brushEnd', this.handleBrush);
+    // this.chart?.getZr().on('click', this.handleGraphClick);
     this.resizeListener = this.renderer.listen('window', 'resize', () => {
       this.chart?.resize();
     });
 
     this.updateChart();
+
+
+
+        if (this.chart) {
+          this.chart.dispatchAction({
+            type: 'takeGlobalCursor',
+            key: 'brush',
+            brushOption: {
+              brushType: 'lineX',
+              brushMode: 'multiple',
+            },
+          });
+        }
+
+
   }
 
   ngOnDestroy(): void {
@@ -307,6 +333,14 @@ export class EcgDataDisplayComponent
     this.updateChart();
   }
 
+  handleBrush = (params: any) => {
+    params.areas.forEach(brush => {
+      // console.log('brush', brush.coordRange);
+      let time = brush.coordRange[1] - brush.coordRange[0];
+      console.log('time: ', time);
+    });
+  };
+
   handleGraphClick = (params: any) => {
     let pointInPixel = [params.offsetX, params.offsetY];
     let option = this.chart?.getOption();
@@ -443,7 +477,6 @@ export class EcgDataDisplayComponent
       this.QTIntervalsPerSignal![signalIndex][i][1] = T;
       this.QTIntervalsPerSignal![signalIndex][i][2] = QTInterval;
 
-
       if (option!['series']![signalIndex]['markArea']['data']) {
         option!['series']![signalIndex]['markArea']['data'].push([
           {
@@ -468,21 +501,20 @@ export class EcgDataDisplayComponent
           ],
         ];
       }
-
     }
-      option!['series']![signalIndex]['markArea'] = {
-        silent: true,
-        label: {
-          position: 'insideTop',
-          color: '#000',
-        },
-        itemStyle: {
-          color: 'rgba(255, 173, 177, 0.4)',
-        },
-        data: data,
-      };
+    option!['series']![signalIndex]['markArea'] = {
+      silent: true,
+      label: {
+        position: 'insideTop',
+        color: '#000',
+      },
+      itemStyle: {
+        color: 'rgba(255, 173, 177, 0.4)',
+      },
+      data: data,
+    };
 
-      this.chart?.setOption(option!);
+    this.chart?.setOption(option!);
   }
 
   getQWaveTimes(signalIndex: number): Decimal[] {
