@@ -9,7 +9,7 @@ import {
   RendererFactory2,
 } from '@angular/core';
 import { EdfDataService } from 'src/app/services/edf-data.service';
-import { Subject } from 'rxjs';
+import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import * as echarts from 'echarts';
 import { Decimal } from 'decimal.js';
@@ -26,11 +26,16 @@ export class EcgDataDisplayComponent
   responseData: any = {};
   isLoading: boolean = true;
   timeScale = { start: 0, end: 4000 };
-  
-  RRIntervalsPerSample: [
-    [{ mvolts: number; time: Decimal; sampleIndex: number }]
-  ] = [[{ mvolts: 0, time: new Decimal(0), sampleIndex: 0 }]];
-  QTIntervalsPerSignal: Decimal[][][] = [];
+
+  selectedSeriesIndex = 0;
+  QTc = 0;
+
+  brushStrokes: {
+    startTime: number;
+    endTime: number;
+    R: number;
+    S: number;
+  }[][] = [];
 
   private destroy$ = new Subject<void>();
   private chart: echarts.ECharts | undefined;
@@ -54,8 +59,9 @@ export class EcgDataDisplayComponent
         axisLabel: {
           formatter: '{value}ms',
         },
-        maxInterval: 200,
+        maxInterval: 1000,
         minInterval: 200,
+        splitNumber: 200,
         splitLine: {
           show: true,
           lineStyle: {
@@ -77,6 +83,10 @@ export class EcgDataDisplayComponent
         type: 'value',
         name: 'Amplitude(microvolts)',
       },
+      grid: {
+        left: '5%',
+        right: '5%',
+      },
       legend: {
         show: true,
         selectedMode: 'single',
@@ -92,21 +102,24 @@ export class EcgDataDisplayComponent
         xAxisIndex: 'all',
         yAxisIndex: 'none',
         transformable: false,
+        brushLink: 'all',
         brushStyle: {
           borderWidth: 1,
           color: 'rgba(120,140,180,0.5)',
-          borderColor: 'rgba(120,140,180,0.8)'
+          borderColor: 'rgba(120,140,180,0.8)',
         },
       },
       dataZoom: [
         {
           type: 'slider',
           xAxisIndex: 0,
+          filterMode: 'none',
         },
         {
           type: 'inside',
           xAxisIndex: 0,
           moveOnMouseMove: false,
+          filterMode: 'none',
         },
       ],
       series: [] as any[],
@@ -115,7 +128,7 @@ export class EcgDataDisplayComponent
     this.edfDataService.dataRecords$
       .pipe(takeUntil(this.destroy$))
       .subscribe((response) => {
-        console.log('Response from EdfDataService:', response);
+        // console.log('Response from EdfDataService:', response);
         if (response) {
           this.responseData = response;
           if (this.chart) {
@@ -134,6 +147,7 @@ export class EcgDataDisplayComponent
     this.chart = echarts.init(this.chartRef.nativeElement);
     this.chart?.on('dataZoom', this.handleDataZoom);
     this.chart?.on('brushEnd', this.handleBrush);
+    this.chart?.on('legendselectchanged', this.handleLegendClick);
     // this.chart?.getZr().on('click', this.handleGraphClick);
     this.resizeListener = this.renderer.listen('window', 'resize', () => {
       this.chart?.resize();
@@ -141,20 +155,15 @@ export class EcgDataDisplayComponent
 
     this.updateChart();
 
-
-
-        if (this.chart) {
-          this.chart.dispatchAction({
-            type: 'takeGlobalCursor',
-            key: 'brush',
-            brushOption: {
-              brushType: 'lineX',
-              brushMode: 'multiple',
-            },
-          });
-        }
-
-
+    if (this.chart) {
+      this.chart.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'brush',
+        brushOption: {
+          brushType: 'lineX',
+        },
+      });
+    }
   }
 
   ngOnDestroy(): void {
@@ -164,6 +173,21 @@ export class EcgDataDisplayComponent
       this.resizeListener();
     }
   }
+
+  findMvValueAt(signalIndex: number, timeIndex: number): any {
+    let series = this.option?.series;
+    if (series) {
+      let data = series[signalIndex].data;
+      if (data) {
+        let found = data[timeIndex];
+        if (found) {
+          return found[1];
+        }
+      }
+    }
+    return 'not found';
+  }
+
   updateChart(): void {
     this.isLoading = true;
     try {
@@ -197,23 +221,21 @@ export class EcgDataDisplayComponent
               markLine: {
                 silent: true,
                 symbol: 'none',
-                // label: {
-                //   formatter: function(params) {
-                //     console.log('params: ', params);
-                //     return params.data['xAxis'];
-                //   },
-                // },
+                lineStyle: {
+                  color: 'rgba(242, 25, 25, 0.4)',
+                  type: 'solid',
+                },
                 data:
-                  this.RRIntervalsPerSample &&
-                  this.RRIntervalsPerSample[i] &&
-                  !this.RRIntervalsPerSample[i][0].time.equals(new Decimal(0))
-                    ? this.RRIntervalsPerSample[i].map((interval) => {
-                        return { xAxis: interval['time'].toNumber() };
+                  this.brushStrokes &&
+                  this.brushStrokes[i] &&
+                  this.brushStrokes[i][0]
+                    ? this.brushStrokes[i].map((interval) => {
+                        return { xAxis: interval['R'] };
+                        // return { xAxis: interval['S'] };   // figure out later
                       })
                     : [],
               },
               markArea: {
-                silent: true,
                 label: {
                   position: 'insideTop',
                   color: '#000',
@@ -222,18 +244,17 @@ export class EcgDataDisplayComponent
                   color: 'rgba(255, 173, 177, 0.4)',
                 },
                 data:
-                  this.QTIntervalsPerSignal &&
-                  this.QTIntervalsPerSignal[i] &&
-                  this.QTIntervalsPerSignal[i][0]
-                    ? this.QTIntervalsPerSignal[i].map((interval) => {
+                  this.brushStrokes &&
+                  this.brushStrokes[i] &&
+                  this.brushStrokes[i][0]
+                    ? this.brushStrokes[i].map((interval) => {
                         return [
                           {
-                            name:
-                              'QT Interval: ' + interval[2].toNumber() + 's',
-                            xAxis: interval[0].toNumber(),
+                            name: 'QT Interval',
+                            xAxis: interval['startTime'],
                           },
                           {
-                            xAxis: interval[1].toNumber(),
+                            xAxis: interval['endTime'],
                           },
                         ];
                       })
@@ -333,176 +354,105 @@ export class EcgDataDisplayComponent
     this.updateChart();
   }
 
-  handleBrush = (params: any) => {
-    params.areas.forEach(brush => {
-      // console.log('brush', brush.coordRange);
-      let time = brush.coordRange[1] - brush.coordRange[0];
-      console.log('time: ', time);
+  handleLegendClick = (params: any) => {
+    this.chart?.dispatchAction({
+      type: 'brush',
+      command: 'clear',
+      areas: [],
     });
+
+    for (let i = 0; i < parseInt(this.responseData._header.nbSignals); i++) {
+      if (this.responseData._header.signalInfo[i].label === params.name) {
+        this.selectedSeriesIndex = i;
+        break;
+      }
+    }
+
+    this.calculateQTc();
   };
 
-  handleGraphClick = (params: any) => {
-    let pointInPixel = [params.offsetX, params.offsetY];
+  handleBrush = (params: any) => {
     let option = this.chart?.getOption();
-    if (this.chart?.containPixel('grid', pointInPixel)) {
-      let pointInData = this.chart?.convertFromPixel('series', pointInPixel);
-      let seriesCount = option!['series'] as [];
-      seriesCount!.forEach((series: any, i: number) => {
-        if (option!['legend']![0]['selected'][series.name]) {
-          let closestSample = series['data'].reduce((prev, curr) => {
-            return Math.abs(curr[0] - pointInData[0]) <
-              Math.abs(prev[0] - pointInData[0])
-              ? curr
-              : prev;
-          });
-          let closestSampleIndex = series['data'].findIndex(
-            (sample) =>
-              sample[0] === closestSample[0] && sample[1] === closestSample[1]
-          );
-          let highestYValue = series['data'][closestSampleIndex][1];
-          let highestYValueIndex = closestSampleIndex;
-          while (series['data'][highestYValueIndex + 1][1] > highestYValue) {
-            highestYValueIndex++;
-            highestYValue = series['data'][highestYValueIndex][1];
-          }
-          while (series['data'][highestYValueIndex - 1][1] > highestYValue) {
-            highestYValueIndex--;
-            highestYValue = series['data'][highestYValueIndex][1];
-          }
+    let startTimeIndex = 0;
+    let endTimeIndex = 0;
+    let R = 0;
+    let S = 0;
+    let rIndex = 0;
 
-          let peakSample = series['data'][highestYValueIndex];
+    params.areas.forEach((brush: any) => {
+      let startTime = option!['series']![this.selectedSeriesIndex][
+        'data'
+      ].reduce((prev, curr) => {
+        return Math.abs(curr[0] - brush.coordRange[0]) <
+          Math.abs(prev[0] - brush.coordRange[0])
+          ? curr
+          : prev;
+      })[0];
 
-          if (!this.RRIntervalsPerSample![i]) {
-            this.RRIntervalsPerSample![i] = [
-              {
-                mvolts: 0,
-                time: new Decimal(0),
-                sampleIndex: 0,
-              },
-            ];
-          }
-
-          if (
-            !this.RRIntervalsPerSample![i].some((obj) =>
-              Object.values(obj).some(
-                (item) =>
-                  item instanceof Decimal &&
-                  item.equals(new Decimal(peakSample[0]))
-              )
-            )
-          ) {
-            if (
-              this.RRIntervalsPerSample![i] === undefined ||
-              this.RRIntervalsPerSample![i][0].time.equals(new Decimal(0))
-            ) {
-              this.RRIntervalsPerSample![i] = [
-                {
-                  mvolts: highestYValueIndex,
-                  time: new Decimal(peakSample[0]),
-                  sampleIndex: highestYValueIndex,
-                },
-              ];
-            } else {
-              this.RRIntervalsPerSample![i].push({
-                mvolts: highestYValueIndex,
-                time: new Decimal(peakSample[0]),
-                sampleIndex: highestYValueIndex,
-              });
-            }
-
-            this.RRIntervalsPerSample![i].sort(
-              (a, b) => a.time.toNumber() - b.time.toNumber()
-            );
-
-            let data = [{ xAxis: Decimal }];
-            if (option!['series']![i]['markLine']['data']) {
-              option!['series']![i]['markLine']['data'].push({
-                xAxis: peakSample[0],
-              });
-              data = option!['series']![i]['markLine']['data'];
-            } else {
-              data = [{ xAxis: peakSample[0] }];
-            }
-
-            option!['series']![i]['markLine'] = {
-              silent: true,
-              symbol: 'none',
-              data: data,
-            };
-
-            this.chart?.setOption(option!);
-          }
+      let endTime = option!['series']![this.selectedSeriesIndex]['data'].reduce(
+        (prev, curr) => {
+          return Math.abs(curr[0] - brush.coordRange[1]) <
+            Math.abs(prev[0] - brush.coordRange[1])
+            ? curr
+            : prev;
         }
-      });
-    }
-  };
+      )[0];
 
-  findValueAt(signalIndex: number, timeIndex: number): any {
-    let series = this.option?.series;
-    if (series) {
-      let data = series[signalIndex].data;
-      if (data) {
-        let found = data[timeIndex];
-        if (found) {
-          return found[1];
+      startTimeIndex = option!['series']![this.selectedSeriesIndex][
+        'data'
+      ].findIndex((sample) => sample[0] === startTime);
+      endTimeIndex = option!['series']![this.selectedSeriesIndex][
+        'data'
+      ].findIndex((sample) => sample[0] === endTime);
+
+      let checkPointValue =
+        option!['series']![this.selectedSeriesIndex]['data'][startTimeIndex][1];
+      for (let i = startTimeIndex; i <= endTimeIndex; i++) {
+        if (
+          option!['series']![this.selectedSeriesIndex]['data'][i][1] >
+          checkPointValue
+        ) {
+          checkPointValue =
+            option!['series']![this.selectedSeriesIndex]['data'][i][1];
+          R = option!['series']![this.selectedSeriesIndex]['data'][i][0];
+          rIndex = i;
         }
       }
-    }
-    return 'not found';
-  }
 
-  calculateQTIntervals(signalIndex: number): void {
-    let option = this.chart?.getOption();
-    let QWaveTimes: Decimal[] = this.getQWaveTimes(signalIndex);
-    let TWaveTimes: Decimal[] = this.getTWaveTimes(signalIndex);
-    let data = [[{ name: '', xAxis: 0 }, { xAxis: 0 }]];
+      checkPointValue =
+        option!['series']![this.selectedSeriesIndex]['data'][rIndex][1];
 
-    if (QWaveTimes.length !== TWaveTimes.length) {
-      console.error('Mismatch in Q and T wave counts');
-    }
-
-    for (let i = 0; i < QWaveTimes.length; i++) {
-      let Q = new Decimal(QWaveTimes[i]);
-      let T = new Decimal(TWaveTimes[i]);
-
-      let QTInterval = T.minus(Q);
-
-      if (!this.QTIntervalsPerSignal![signalIndex]) {
-        this.QTIntervalsPerSignal![signalIndex] = [];
+      while (
+        option!['series']![this.selectedSeriesIndex]['data'][rIndex + 1][1] <
+        checkPointValue
+      ) {
+        rIndex++;
+        checkPointValue =
+          option!['series']![this.selectedSeriesIndex]['data'][rIndex][1];
+        S = option!['series']![this.selectedSeriesIndex]['data'][rIndex][0];
       }
-      if (!this.QTIntervalsPerSignal![signalIndex][i]) {
-        this.QTIntervalsPerSignal![signalIndex][i] = [];
-      }
-      this.QTIntervalsPerSignal![signalIndex][i][0] = Q;
-      this.QTIntervalsPerSignal![signalIndex][i][1] = T;
-      this.QTIntervalsPerSignal![signalIndex][i][2] = QTInterval;
 
-      if (option!['series']![signalIndex]['markArea']['data']) {
-        option!['series']![signalIndex]['markArea']['data'].push([
-          {
-            name: 'QT Interval',
-            xAxis: this.QTIntervalsPerSignal![signalIndex][i][0].toNumber(),
-          },
-          {
-            xAxis: this.QTIntervalsPerSignal![signalIndex][i][1].toNumber(),
-          },
-        ]);
-        data = option!['series']![signalIndex]['markArea']['data'];
+      if (this.brushStrokes[this.selectedSeriesIndex]) {
+        this.brushStrokes[this.selectedSeriesIndex].push({
+          startTime,
+          endTime,
+          R,
+          S,
+        });
       } else {
-        data = [
-          [
-            {
-              name: 'QT Interval',
-              xAxis: this.QTIntervalsPerSignal![signalIndex][i][0].toNumber(),
-            },
-            {
-              xAxis: this.QTIntervalsPerSignal![signalIndex][i][1].toNumber(),
-            },
-          ],
+        this.brushStrokes[this.selectedSeriesIndex] = [
+          { startTime, endTime, R, S },
         ];
       }
-    }
-    option!['series']![signalIndex]['markArea'] = {
+    });
+    this.calculateQTc();
+    this.markBrushStrokes();
+  };
+
+  markBrushStrokes() {
+    let option = this.chart?.getOption();
+
+    option!['series']![this.selectedSeriesIndex]['markArea'] = {
       silent: true,
       label: {
         position: 'insideTop',
@@ -511,57 +461,91 @@ export class EcgDataDisplayComponent
       itemStyle: {
         color: 'rgba(255, 173, 177, 0.4)',
       },
-      data: data,
     };
+
+    option!['series']![this.selectedSeriesIndex]['markLine'] = {
+      silent: true,
+      symbol: 'none',
+      lineStyle: {
+        color: 'rgba(242, 25, 25, 0.4)',
+        type: 'solid',
+      },
+    };
+
+    this.brushStrokes[this.selectedSeriesIndex].forEach((brush) => {
+      if (option!['series']![this.selectedSeriesIndex]['markArea']['data']) {
+        option!['series']![this.selectedSeriesIndex]['markArea']['data'].push([
+          {
+            name: 'QT Interval',
+            xAxis: brush['startTime'],
+          },
+          {
+            xAxis: brush['endTime'],
+          },
+        ]);
+      } else {
+        option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [
+          [
+            {
+              name: 'QT Interval',
+              xAxis: brush['startTime'],
+            },
+            {
+              xAxis: brush['endTime'],
+            },
+          ],
+        ];
+      }
+
+      if (option!['series']![this.selectedSeriesIndex]['markLine']['data']) {
+        option!['series']![this.selectedSeriesIndex]['markLine']['data'].push(
+          {
+            xAxis: brush['R'],
+          },
+          { xAxis: brush['S'] }
+        );
+      } else {
+        option!['series']![this.selectedSeriesIndex]['markLine']['data'] = [
+          { xAxis: brush['R'] },
+          { xAxis: brush['S'] },
+        ];
+      }
+    });
 
     this.chart?.setOption(option!);
   }
 
-  getQWaveTimes(signalIndex: number): Decimal[] {
-    let QWaveTimes: Decimal[] = [];
-    let signalData = this.chart?.getOption()!['series']![signalIndex].data;
+  calculateQTc() {
+    if (this.brushStrokes[this.selectedSeriesIndex]) {
+      let RRIntervals = this.brushStrokes[this.selectedSeriesIndex].map(
+        (interval) => {
+          return interval.R;
+        }
+      );
+      let RRIntervalsSum = 0;
+      RRIntervals.forEach((interval) => {
+        RRIntervalsSum += interval;
+      });
 
-    this.RRIntervalsPerSample[signalIndex].forEach((interval, i) => {
-      let lowestYValue = signalData[interval.sampleIndex][1];
-      let lowestYValueIndex = interval.sampleIndex;
+      let RRIntervalsAverage = RRIntervalsSum / RRIntervals.length;
 
-      while (signalData[lowestYValueIndex - 1][1] < lowestYValue) {
-        lowestYValueIndex--;
-        lowestYValue = signalData[lowestYValueIndex][1];
-      }
+      let QTIntervals = this.brushStrokes[this.selectedSeriesIndex].map(
+        (interval) => {
+          return interval.endTime - interval.startTime;
+        }
+      );
+      let QTIntervalsSum = 0;
+      QTIntervals.forEach((interval) => {
+        QTIntervalsSum += interval;
+      });
 
-      QWaveTimes.push(signalData[lowestYValueIndex][0]);
-    });
-    return QWaveTimes;
-  }
+      let QTIntervalsAverage = QTIntervalsSum / QTIntervals.length;
 
-  getTWaveTimes(signalIndex: number): Decimal[] {
-    let TWaveTimes: Decimal[] = [];
-    let signalData = this.chart?.getOption()!['series']![signalIndex].data;
-    this.RRIntervalsPerSample[signalIndex].forEach((interval, i) => {});
-
-    this.RRIntervalsPerSample[signalIndex].forEach((interval, i) => {
-      let lowestYValue = signalData[interval.sampleIndex][1];
-      let lowestYValueIndex = interval.sampleIndex;
-
-      while (signalData[lowestYValueIndex + 1][1] < lowestYValue) {
-        lowestYValueIndex++;
-        lowestYValue = signalData[lowestYValueIndex][1];
-      }
-
-      while (signalData[lowestYValueIndex + 1][1] > lowestYValue) {
-        lowestYValueIndex++;
-        lowestYValue = signalData[lowestYValueIndex][1];
-      }
-
-      while (signalData[lowestYValueIndex + 1][1] < lowestYValue) {
-        lowestYValueIndex++;
-        lowestYValue = signalData[lowestYValueIndex][1];
-      }
-
-      TWaveTimes.push(signalData[lowestYValueIndex][0]);
-    });
-
-    return TWaveTimes;
+      let exactQTc = QTIntervalsAverage / Math.sqrt(RRIntervalsAverage);
+      console.log('exactQTc:', exactQTc);
+      this.QTc = Math.round(exactQTc * 100) / 100;
+    } else {
+      this.QTc = 0;
+    }
   }
 }
