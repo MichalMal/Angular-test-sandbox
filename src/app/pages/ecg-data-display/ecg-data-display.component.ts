@@ -7,9 +7,11 @@ import {
   AfterViewInit,
   Renderer2,
   RendererFactory2,
+  Output,
+  EventEmitter,
 } from '@angular/core';
 import { EdfDataService } from 'src/app/services/edf-data.service';
-import { Subject, interval } from 'rxjs';
+import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import * as echarts from 'echarts';
 import { Decimal } from 'decimal.js';
@@ -25,16 +27,17 @@ export class EcgDataDisplayComponent
 {
   responseData: any = {};
   isLoading: boolean = true;
-  timeScale = { start: 0, end: 4000 };
+  timeScale = { start: 0, end: 9000 };
 
   selectedSeriesIndex = 0;
-  QTc = 0;
+  averageHr = 0;
 
   brushStrokes: {
     startTime: number;
     endTime: number;
     R: number;
     S: number;
+    Qtc: number[];
   }[][] = [];
 
   private destroy$ = new Subject<void>();
@@ -44,6 +47,13 @@ export class EcgDataDisplayComponent
   private resizeListener!: () => void;
 
   @ViewChild('chart') chartRef!: ElementRef;
+  @Output() IntervalTimeChange = new EventEmitter<{
+    startTime: number;
+    endTime: number;
+    R: number;
+    S: number;
+    Qtc: number[];
+  }[]>();
 
   constructor(
     private rendererFactory: RendererFactory2,
@@ -81,7 +91,7 @@ export class EcgDataDisplayComponent
       },
       yAxis: {
         type: 'value',
-        name: 'Amplitude(microvolts)',
+        name: 'mv',
       },
       grid: {
         left: '5%',
@@ -225,6 +235,9 @@ export class EcgDataDisplayComponent
                   color: 'rgba(242, 25, 25, 0.4)',
                   type: 'solid',
                 },
+                label: {
+                  show: false,
+                },
                 data:
                   this.brushStrokes &&
                   this.brushStrokes[i] &&
@@ -250,7 +263,6 @@ export class EcgDataDisplayComponent
                     ? this.brushStrokes[i].map((interval) => {
                         return [
                           {
-                            name: 'QT Interval',
                             xAxis: interval['startTime'],
                           },
                           {
@@ -438,13 +450,20 @@ export class EcgDataDisplayComponent
           endTime,
           R,
           S,
+          Qtc: [],
         });
       } else {
         this.brushStrokes[this.selectedSeriesIndex] = [
-          { startTime, endTime, R, S },
+          { startTime, endTime, R, S, Qtc: [] },
         ];
       }
     });
+
+    this.brushStrokes[this.selectedSeriesIndex].sort((a, b) => {
+      return a.startTime - b.startTime;
+    });
+
+
     this.calculateQTc();
     this.markBrushStrokes();
   };
@@ -470,13 +489,15 @@ export class EcgDataDisplayComponent
         color: 'rgba(242, 25, 25, 0.4)',
         type: 'solid',
       },
+      label: {
+        show: false,
+      },
     };
 
     this.brushStrokes[this.selectedSeriesIndex].forEach((brush) => {
       if (option!['series']![this.selectedSeriesIndex]['markArea']['data']) {
         option!['series']![this.selectedSeriesIndex]['markArea']['data'].push([
           {
-            name: 'QT Interval',
             xAxis: brush['startTime'],
           },
           {
@@ -487,7 +508,6 @@ export class EcgDataDisplayComponent
         option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [
           [
             {
-              name: 'QT Interval',
               xAxis: brush['startTime'],
             },
             {
@@ -517,35 +537,52 @@ export class EcgDataDisplayComponent
 
   calculateQTc() {
     if (this.brushStrokes[this.selectedSeriesIndex]) {
+      this.brushStrokes[this.selectedSeriesIndex].forEach((series, i) => {
+        if (this.brushStrokes[this.selectedSeriesIndex][i+1]) {
+          let RRInterval = this.brushStrokes[this.selectedSeriesIndex][i+1]['R'] - series.R
+          let QTInterval = series.endTime - series.startTime
+          let Bqtc = QTInterval / Math.sqrt(RRInterval);
+          this.brushStrokes[this.selectedSeriesIndex][i]['Qtc'][1] =  Math.round(Bqtc * 100) / 100;
+        }
+      });
+
       let RRIntervals = this.brushStrokes[this.selectedSeriesIndex].map(
         (interval) => {
           return interval.R;
         }
       );
-      let RRIntervalsSum = 0;
-      RRIntervals.forEach((interval) => {
-        RRIntervalsSum += interval;
-      });
 
-      let RRIntervalsAverage = RRIntervalsSum / RRIntervals.length;
-
-      let QTIntervals = this.brushStrokes[this.selectedSeriesIndex].map(
-        (interval) => {
-          return interval.endTime - interval.startTime;
+      let RRIntervalSum = 0
+      RRIntervals.forEach((interval, i) => {
+        if (i !== 0) {
+          console.log('RRInterval:', interval - RRIntervals[i - 1]);
+          RRIntervalSum += interval - RRIntervals[i - 1];
         }
-      );
-      let QTIntervalsSum = 0;
-      QTIntervals.forEach((interval) => {
-        QTIntervalsSum += interval;
       });
 
-      let QTIntervalsAverage = QTIntervalsSum / QTIntervals.length;
+      console.log('RRIntervalSum:', RRIntervalSum);
 
-      let exactQTc = QTIntervalsAverage / Math.sqrt(RRIntervalsAverage);
-      console.log('exactQTc:', exactQTc);
-      this.QTc = Math.round(exactQTc * 100) / 100;
+      let hr = 60000 /(RRIntervalSum / RRIntervals.length);
+      this.averageHr = Math.round(hr * 100) / 100;
     } else {
-      this.QTc = 0;
+      this.averageHr = 0;
     }
+  }
+
+  onIntervalTimeChange(brush: {
+    startTime: number;
+    endTime: number;
+    R: number;
+    S: number;
+    Qtc: number[];
+  }[]): void {
+    this.brushStrokes[this.selectedSeriesIndex] = brush;
+    this.IntervalTimeChange.emit(this.brushStrokes[this.selectedSeriesIndex]);
+
+    let option = this.chart?.getOption();
+
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
+    this.calculateQTc();
+    this.markBrushStrokes();
   }
 }
