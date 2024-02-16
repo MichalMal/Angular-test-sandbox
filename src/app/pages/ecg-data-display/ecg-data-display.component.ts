@@ -106,6 +106,7 @@ export class EcgDataDisplayComponent
         position: function (pt) {
           return [pt[0], '10%'];
         },
+        formatter: '{b0}: {c0}<br />{b1}: {c1}',
       },
       brush: {
         toolbox: ['clear'],
@@ -119,6 +120,13 @@ export class EcgDataDisplayComponent
           borderColor: 'rgba(120,140,180,0.8)',
         },
       },
+      // visualMap: {
+      //   type: 'piecewise',
+      //   show: false,
+      //   seriesIndex: 0,
+        
+      // },
+      // PLAY AROUND WITH THIS
       dataZoom: [
         {
           type: 'slider',
@@ -217,7 +225,6 @@ export class EcgDataDisplayComponent
 
             let duration: Decimal = new Decimal(0);
 
-            const color = this.getRandomColor();
             let newSeries: echarts.LineSeriesOption = {
               name: this.responseData._header.signalInfo[i].label,
               type: 'line',
@@ -463,6 +470,11 @@ export class EcgDataDisplayComponent
       return a.startTime - b.startTime;
     });
 
+    this.chart?.dispatchAction({
+      type: 'brush',
+      command: 'clear',
+      areas: [],
+    });
 
     this.calculateQTc();
     this.markBrushStrokes();
@@ -472,7 +484,6 @@ export class EcgDataDisplayComponent
     let option = this.chart?.getOption();
 
     option!['series']![this.selectedSeriesIndex]['markArea'] = {
-      silent: true,
       label: {
         position: 'insideTop',
         color: '#000',
@@ -509,6 +520,7 @@ export class EcgDataDisplayComponent
           [
             {
               xAxis: brush['startTime'],
+
             },
             {
               xAxis: brush['endTime'],
@@ -538,11 +550,20 @@ export class EcgDataDisplayComponent
   calculateQTc() {
     if (this.brushStrokes[this.selectedSeriesIndex]) {
       this.brushStrokes[this.selectedSeriesIndex].forEach((series, i) => {
+        
+        let QTInterval = series.endTime - series.startTime
+        
         if (this.brushStrokes[this.selectedSeriesIndex][i+1]) {
           let RRInterval = this.brushStrokes[this.selectedSeriesIndex][i+1]['R'] - series.R
-          let QTInterval = series.endTime - series.startTime
-          let Bqtc = QTInterval / Math.sqrt(RRInterval);
+          
+          let Bqtc = ((QTInterval/1000) / Math.sqrt((RRInterval/1000))) * 1000;
           this.brushStrokes[this.selectedSeriesIndex][i]['Qtc'][1] =  Math.round(Bqtc * 100) / 100;
+          
+          let Fqtc = ((QTInterval/1000) + 0.154 * (1 - (RRInterval/1000))) * 1000;
+          this.brushStrokes[this.selectedSeriesIndex][i]['Qtc'][2] = Math.round(Fqtc * 100) / 100;
+
+          let Fdqtc = ((QTInterval/1000) / Math.cbrt((RRInterval/1000))) * 1000;
+          this.brushStrokes[this.selectedSeriesIndex][i]['Qtc'][3] = Math.round(Fdqtc * 100) / 100;
         }
       });
 
@@ -555,14 +576,11 @@ export class EcgDataDisplayComponent
       let RRIntervalSum = 0
       RRIntervals.forEach((interval, i) => {
         if (i !== 0) {
-          console.log('RRInterval:', interval - RRIntervals[i - 1]);
           RRIntervalSum += interval - RRIntervals[i - 1];
         }
       });
 
-      console.log('RRIntervalSum:', RRIntervalSum);
-
-      let hr = 60000 /(RRIntervalSum / RRIntervals.length);
+      let hr = 60000 /(RRIntervalSum / (RRIntervals.length - 1));
       this.averageHr = Math.round(hr * 100) / 100;
     } else {
       this.averageHr = 0;
@@ -584,5 +602,21 @@ export class EcgDataDisplayComponent
     option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
     this.calculateQTc();
     this.markBrushStrokes();
+  }
+
+  higlightQT(brushIndex: number) {
+    let option = this.chart?.getOption();
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'][brushIndex][0]['itemStyle'] = {
+      color: 'rgba(255, 173, 177, 0.7)',
+    }
+    this.chart?.setOption(option!);
+  }
+
+  dimmQT(brushIndex: number) {
+    let option = this.chart?.getOption();
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'][brushIndex][0]['itemStyle'] = {
+      color: 'rgba(255, 173, 177, 0.4)',
+    }
+    this.chart?.setOption(option!);
   }
 }
