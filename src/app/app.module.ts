@@ -19,6 +19,7 @@ import { HomeComponent } from './pages/home/home.component';
 import { ContactUsComponent } from './pages/contact-us/contact-us.component';
 import { EcgDataDisplayComponent } from './pages/ecg-data-display/ecg-data-display.component';
 import { TimeScaleComponent } from './components/time-scale/time-scale.component';
+import { QtChartComponent } from './components/qt-chart/qt-chart.component';
 
 
 @NgModule({
@@ -29,7 +30,8 @@ import { TimeScaleComponent } from './components/time-scale/time-scale.component
     HomeComponent,
     ContactUsComponent,
     EcgDataDisplayComponent,
-    TimeScaleComponent
+    TimeScaleComponent,
+    QtChartComponent
   ],
   imports: [
     BrowserModule,

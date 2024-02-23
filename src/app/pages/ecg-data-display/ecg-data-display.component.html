@@ -56,8 +56,35 @@
       <li class="list-group-item border border-2 border-primary" [ngClass]="{'border-top-0': i !== 0 }"
         *ngFor="let brush of brushStrokes[selectedSeriesIndex]; index as i" (mouseover)="higlightQT(i)" (mouseout)="dimmQT(i)">
         <h5><i class="bi bi-distribute-horizontal text-success"></i> QT Interval {{i+1}} - {{brush.endTime - brush.startTime}} ms</h5>
+
+        <app-qt-chart *ngIf="shouldRenderChart" [qtInterval]="brush" [data]="fetchQtData(brush)"></app-qt-chart>
         <hr>
         <div class="row">
+          <div class="col">
+            <div class="row">
+              <label for="r-wave-{{i}}" class="col-md-3 col-form-label text-center">R Wave: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="r-wave-{{i}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['R']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+          <div class="col-1 d-flex align-items-center justify-content-center">
+            <i class="bi bi-activity text-primary"></i>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="s-wave-{{i}}" class="col-md-3 col-form-label text-center">S Wave: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="s-wave-{{i}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['S']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row mt-2">
           <div class="col">
             <div class="row">
               <label for="start-time-{{i}}" class="col-md-3 col-form-label text-center">Start Time: </label>

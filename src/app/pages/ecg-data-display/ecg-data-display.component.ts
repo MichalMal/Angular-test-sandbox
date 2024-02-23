@@ -9,6 +9,7 @@ import {
   RendererFactory2,
   Output,
   EventEmitter,
+  ChangeDetectorRef
 } from '@angular/core';
 import { EdfDataService } from 'src/app/services/edf-data.service';
 import { Subject } from 'rxjs';
@@ -27,8 +28,8 @@ export class EcgDataDisplayComponent
 {
   responseData: any = {};
   isLoading: boolean = true;
-  timeScale = { start: 0, end: 9000 };
-
+  timeScale = { start: 3040000, end: 4000000 };
+  shouldRenderChart = true;
   selectedSeriesIndex = 0;
   averageHr = 0;
 
@@ -58,7 +59,8 @@ export class EcgDataDisplayComponent
   constructor(
     private rendererFactory: RendererFactory2,
     private edfDataService: EdfDataService,
-    private router: Router
+    private router: Router,
+    private cdRef: ChangeDetectorRef
   ) {
     this.renderer = rendererFactory.createRenderer(null, null);
   }
@@ -106,7 +108,6 @@ export class EcgDataDisplayComponent
         position: function (pt) {
           return [pt[0], '10%'];
         },
-        formatter: '{b0}: {c0}<br />{b1}: {c1}',
       },
       brush: {
         toolbox: ['clear'],
@@ -131,13 +132,11 @@ export class EcgDataDisplayComponent
         {
           type: 'slider',
           xAxisIndex: 0,
-          filterMode: 'none',
         },
         {
           type: 'inside',
           xAxisIndex: 0,
           moveOnMouseMove: false,
-          filterMode: 'none',
         },
       ],
       series: [] as any[],
@@ -288,7 +287,7 @@ export class EcgDataDisplayComponent
               ] = i === 0;
             }
 
-            this.responseData._physicalSignals[i].forEach(
+            this.responseData._rawSignals[i].forEach(
               (dataRecordDuration) => {
                 if (
                   duration.greaterThanOrEqualTo(this.timeScale.start) &&
@@ -594,6 +593,9 @@ export class EcgDataDisplayComponent
     S: number;
     Qtc: number[];
   }[]): void {
+    this.shouldRenderChart = false;
+    this.cdRef.detectChanges();
+
     this.brushStrokes[this.selectedSeriesIndex] = brush;
     this.IntervalTimeChange.emit(this.brushStrokes[this.selectedSeriesIndex]);
 
@@ -602,6 +604,7 @@ export class EcgDataDisplayComponent
     option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
     this.calculateQTc();
     this.markBrushStrokes();
+    this.shouldRenderChart = true;
   }
 
   higlightQT(brushIndex: number) {
@@ -618,5 +621,27 @@ export class EcgDataDisplayComponent
       color: 'rgba(255, 173, 177, 0.4)',
     }
     this.chart?.setOption(option!);
+  }
+
+  fetchQtData(brush: {
+    startTime: number;
+    endTime: number;
+    R: number;
+    S: number;
+    Qtc: number[];
+  }) {
+    let option = this.chart?.getOption();
+
+    let startTimeIndex = option!['series']![this.selectedSeriesIndex][
+      'data'
+    ].findIndex((sample) => sample[0] === brush.startTime);
+    let endTimeIndex = option!['series']![this.selectedSeriesIndex][
+      'data'
+    ].findIndex((sample) => sample[0] === brush.endTime);
+
+
+    let filteredData = option!['series']![this.selectedSeriesIndex]['data'].slice(startTimeIndex, endTimeIndex + 1);
+
+    return filteredData;
   }
 }
