@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { EdfDataService } from 'src/app/services/edf-data.service';
 import { Subject } from 'rxjs';
+import * as moment from 'moment';
 import { takeUntil } from 'rxjs/operators';
 import * as echarts from 'echarts';
 import { Decimal } from 'decimal.js';
@@ -70,13 +71,12 @@ export class EcgDataDisplayComponent
     this.option = {
       xAxis: {
         axisLabel: {
+          hideOverlap: true,
           formatter: '{value}ms',
         },
         min: this.timeScale['start'],
         max: this.timeScale['end'],
-        maxInterval: 10000,
-        minInterval: 200,
-        splitNumber: 200,
+        maxInterval: 200,
         splitLine: {
           show: true,
           lineStyle: {
@@ -107,7 +107,11 @@ export class EcgDataDisplayComponent
         selectedMode: 'single',
       },
       tooltip: {
+        // show: false,
         trigger: 'axis',
+        textStyle: {
+          fontSize: 9,
+        },
         position: function (pt) {
           return [pt[0], '10%'];
         },
@@ -318,6 +322,15 @@ export class EcgDataDisplayComponent
                 duration = duration.plus(countDuration);
               }
             );
+
+
+            this.option!.tooltip!['formatter'] = (params: any) => {
+              var date = new Date(this.responseData._header.recordingDate);
+              date.setMilliseconds(date.getMilliseconds() + (params[0].value[0]));
+
+              let formattedString = moment(date).format('dddd, Do MMMM YYYY') + '<br/><b style="font-size: 12px">' + moment(date).format('H:mm:ss') + ':' + date.getMilliseconds() + '</b><br/>' + params[0].value[1] + ' mv';
+              return formattedString;
+            };
 
             if (Array.isArray(this.option?.series)) {
               this.option?.series.push(newSeries);

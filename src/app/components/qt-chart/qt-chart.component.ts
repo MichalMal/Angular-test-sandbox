@@ -30,9 +30,7 @@ export class QtChartComponent {
         axisLabel: {
           formatter: '{value}ms',
         },
-        maxInterval: 1000,
-        minInterval: 200,
-        splitNumber: 200,
+        maxInterval: 200,
         splitLine: {
           show: true,
           lineStyle: {
@@ -61,6 +59,7 @@ export class QtChartComponent {
         bottom: '15%',
       },
       tooltip: {
+        // show: false,
         trigger: 'axis',
         position: function (pt) {
           return [pt[0], '10%'];
