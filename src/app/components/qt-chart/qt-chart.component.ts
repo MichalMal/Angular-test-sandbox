@@ -16,7 +16,6 @@ export class QtChartComponent {
   private renderer: Renderer2;
   private resizeListener!: () => void;
 
-
   constructor(
     private rendererFactory: RendererFactory2,
   ) {
@@ -58,8 +57,8 @@ export class QtChartComponent {
       grid: {
         left: '5%',
         right: '5%',
-        top: '15%',
-        bottom: '10%',
+        top: '20%',
+        bottom: '15%',
       },
       tooltip: {
         trigger: 'axis',
@@ -129,8 +128,6 @@ export class QtChartComponent {
   }
 
   updateChart() {
-    console.log('updateChart');
-
     this.chart?.setOption(this.option!);
   }
 }

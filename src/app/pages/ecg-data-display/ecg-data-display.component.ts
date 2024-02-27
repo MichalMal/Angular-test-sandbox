@@ -28,8 +28,9 @@ export class EcgDataDisplayComponent
 {
   responseData: any = {};
   isLoading: boolean = true;
-  timeScale = { start: 3040000, end: 4000000 };
+  timeScale = { start: 0, end: 40000 };
   shouldRenderChart = true;
+  currentRenderedChart = '';
   selectedSeriesIndex = 0;
   averageHr = 0;
 
@@ -71,7 +72,9 @@ export class EcgDataDisplayComponent
         axisLabel: {
           formatter: '{value}ms',
         },
-        maxInterval: 1000,
+        min: this.timeScale['start'],
+        max: this.timeScale['end'],
+        maxInterval: 10000,
         minInterval: 200,
         splitNumber: 200,
         splitLine: {
@@ -108,6 +111,9 @@ export class EcgDataDisplayComponent
         position: function (pt) {
           return [pt[0], '10%'];
         },
+      },
+      toolbox: {
+        show: false,
       },
       brush: {
         toolbox: ['clear'],
@@ -171,7 +177,7 @@ export class EcgDataDisplayComponent
     });
 
     this.updateChart();
-
+ 
     if (this.chart) {
       this.chart.dispatchAction({
         type: 'takeGlobalCursor',
@@ -329,6 +335,10 @@ export class EcgDataDisplayComponent
     this.isLoading = false;
   }
 
+  onAcordianShow(panelId: string) {
+    this.currentRenderedChart = panelId;
+  }
+
   handleDataZoom = (params: any) => {
     const { start, end } = this.getZoomValues(params);
     const zoomLevel = end - start;
@@ -366,9 +376,13 @@ export class EcgDataDisplayComponent
 
   onTimeScaleChange(newTimeScale: { start: number; end: number }): void {
     // Update the chart with the new timescale
-
+    console.log('onTimeScaleChange', newTimeScale);
     this.option!.series = [];
     this.timeScale = newTimeScale;
+
+    this.option!.xAxis!['min'] = this.timeScale['start'],
+    this.option!.xAxis!['max'] = this.timeScale['end'],
+
     this.updateChart();
   }
 
@@ -556,13 +570,13 @@ export class EcgDataDisplayComponent
           let RRInterval = this.brushStrokes[this.selectedSeriesIndex][i+1]['R'] - series.R
           
           let Bqtc = ((QTInterval/1000) / Math.sqrt((RRInterval/1000))) * 1000;
-          this.brushStrokes[this.selectedSeriesIndex][i]['Qtc'][1] =  Math.round(Bqtc * 100) / 100;
+          this.brushStrokes[this.selectedSeriesIndex][i+1]['Qtc'][1] =  Math.round(Bqtc * 100) / 100;
           
           let Fqtc = ((QTInterval/1000) + 0.154 * (1 - (RRInterval/1000))) * 1000;
-          this.brushStrokes[this.selectedSeriesIndex][i]['Qtc'][2] = Math.round(Fqtc * 100) / 100;
+          this.brushStrokes[this.selectedSeriesIndex][i+1]['Qtc'][2] = Math.round(Fqtc * 100) / 100;
 
           let Fdqtc = ((QTInterval/1000) / Math.cbrt((RRInterval/1000))) * 1000;
-          this.brushStrokes[this.selectedSeriesIndex][i]['Qtc'][3] = Math.round(Fdqtc * 100) / 100;
+          this.brushStrokes[this.selectedSeriesIndex][i+1]['Qtc'][3] = Math.round(Fdqtc * 100) / 100;
         }
       });
 
@@ -638,7 +652,6 @@ export class EcgDataDisplayComponent
     let endTimeIndex = option!['series']![this.selectedSeriesIndex][
       'data'
     ].findIndex((sample) => sample[0] === brush.endTime);
-
 
     let filteredData = option!['series']![this.selectedSeriesIndex]['data'].slice(startTimeIndex, endTimeIndex + 1);
 
