@@ -18,6 +18,7 @@ import { takeUntil } from 'rxjs/operators';
 import * as echarts from 'echarts';
 import { Decimal } from 'decimal.js';
 import { Router } from '@angular/router';
+import { NgbAccordion } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-ecg-data-display',
@@ -49,14 +50,7 @@ export class EcgDataDisplayComponent
   private resizeListener!: () => void;
 
   @ViewChild('chart') chartRef!: ElementRef;
-
-  @Output() IntervalTimeChange = new EventEmitter<{
-    startTime: number;
-    endTime: number;
-    R: number;
-    S: number;
-    Qtc: number[];
-  }[]>();
+  @ViewChild('accordion') accordion!: NgbAccordion;
 
   constructor(
     private rendererFactory: RendererFactory2,
@@ -627,17 +621,18 @@ export class EcgDataDisplayComponent
     R: number;
     S: number;
     Qtc: number[];
-  }[]): void {
+  }[], accordionIndex: number): void {
     this.cdRef.detectChanges();
 
     this.brushStrokes[this.selectedSeriesIndex] = brush;
 
+    this.accordion.toggle(`ngb-accordion-item-1`);
     let option = this.chart?.getOption();
 
     option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
     this.calculateQTc();
     this.markBrushStrokes();
-    
+    this.accordion.toggle(`ngb-accordion-item-${accordionIndex}`);
   }
 
   higlightQT(brushIndex: number) {

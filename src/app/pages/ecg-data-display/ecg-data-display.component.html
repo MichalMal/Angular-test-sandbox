@@ -52,8 +52,8 @@
       </div>
     </div>
 
-    <div ngbAccordion [closeOthers]="true">
-      <div ngbAccordionItem="brushStrokesAccordion-{{i}}" *ngFor="let brush of brushStrokes[selectedSeriesIndex]; index as i"
+    <div ngbAccordion [closeOthers]="true" [animation]="false" #accordion="ngbAccordion">
+      <div ngbAccordionItem *ngFor="let brush of brushStrokes[selectedSeriesIndex]; index as i"
         (mouseover)="higlightQT(i)" (mouseout)="dimmQT(i)" (shown)="onAcordianShown('qt-chart-' + i)" (hide)="currentRenderedChart = ''">
         <h2 ngbAccordionHeader>
           <button ngbAccordionButton><i class="bi bi-distribute-horizontal text-success me-2"></i> QT Interval {{i+1}} -
@@ -74,7 +74,9 @@
                 </div>
               </div>
               <hr>
+              <div style="height: 150px;">
               <app-qt-chart *ngIf="currentRenderedChart === 'qt-chart-' + i" [qtInterval]="brush" [data]="fetchQtData(brush)"></app-qt-chart>
+              </div>
               <hr>
               <div class="row">
                 <div class="col-12">
@@ -88,7 +90,7 @@
                     <div class="col-md-9">
                       <input type="number" class="form-control" id="start-time-{{i}}"
                         [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['startTime']"
-                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex],i+1)" />
                     </div>
                   </div>
                 </div>
@@ -98,7 +100,7 @@
                     <div class="col-md-9">
                       <input type="number" class="form-control" id="r-wave-{{i}}"
                         [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['R']"
-                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex],i+1)" />
                     </div>
                   </div>
                 </div>
@@ -108,7 +110,7 @@
                     <div class="col-md-9">
                       <input type="number" class="form-control" id="s-wave-{{i}}"
                         [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['S']"
-                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex],i+1)" />
                     </div>
                   </div>
                 </div>
@@ -118,7 +120,7 @@
                     <div class="col-md-9">
                       <input type="number" class="form-control" id="end-time-{{i}}"
                         [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['endTime']"
-                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                        (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex],i+1)" />
                     </div>
                   </div>
                 </div>
