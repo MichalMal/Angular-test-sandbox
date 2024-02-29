@@ -29,8 +29,7 @@ export class EcgDataDisplayComponent
 {
   responseData: any = {};
   isLoading: boolean = true;
-  timeScale = { start: 0, end: 40000 };
-  shouldRenderChart = true;
+  timeScale = { start: 400000, end: 408000 };
   currentRenderedChart = '';
   selectedSeriesIndex = 0;
   averageHr = 0;
@@ -50,6 +49,7 @@ export class EcgDataDisplayComponent
   private resizeListener!: () => void;
 
   @ViewChild('chart') chartRef!: ElementRef;
+
   @Output() IntervalTimeChange = new EventEmitter<{
     startTime: number;
     endTime: number;
@@ -77,6 +77,7 @@ export class EcgDataDisplayComponent
         min: this.timeScale['start'],
         max: this.timeScale['end'],
         maxInterval: 200,
+        minInterval: 200,
         splitLine: {
           show: true,
           lineStyle: {
@@ -97,6 +98,7 @@ export class EcgDataDisplayComponent
       yAxis: {
         type: 'value',
         name: 'mv',
+        scale: true,
       },
       grid: {
         left: '5%',
@@ -112,6 +114,7 @@ export class EcgDataDisplayComponent
         textStyle: {
           fontSize: 9,
         },
+        showDelay: 400,
         position: function (pt) {
           return [pt[0], '10%'];
         },
@@ -175,7 +178,6 @@ export class EcgDataDisplayComponent
     this.chart?.on('dataZoom', this.handleDataZoom);
     this.chart?.on('brushEnd', this.handleBrush);
     this.chart?.on('legendselectchanged', this.handleLegendClick);
-    // this.chart?.getZr().on('click', this.handleGraphClick);
     this.resizeListener = this.renderer.listen('window', 'resize', () => {
       this.chart?.resize();
     });
@@ -348,7 +350,8 @@ export class EcgDataDisplayComponent
     this.isLoading = false;
   }
 
-  onAcordianShow(panelId: string) {
+  async onAcordianShown(panelId: string) {
+    await new Promise(f => setTimeout(f, 100));
     this.currentRenderedChart = panelId;
   }
 
@@ -575,6 +578,11 @@ export class EcgDataDisplayComponent
 
   calculateQTc() {
     if (this.brushStrokes[this.selectedSeriesIndex]) {
+      this.brushStrokes[this.selectedSeriesIndex].sort((a, b) => {
+        return a.startTime - b.startTime;
+      });
+      this.brushStrokes[this.selectedSeriesIndex][0]['Qtc'] = [];
+
       this.brushStrokes[this.selectedSeriesIndex].forEach((series, i) => {
         
         let QTInterval = series.endTime - series.startTime
@@ -620,18 +628,16 @@ export class EcgDataDisplayComponent
     S: number;
     Qtc: number[];
   }[]): void {
-    this.shouldRenderChart = false;
     this.cdRef.detectChanges();
 
     this.brushStrokes[this.selectedSeriesIndex] = brush;
-    this.IntervalTimeChange.emit(this.brushStrokes[this.selectedSeriesIndex]);
 
     let option = this.chart?.getOption();
 
     option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
     this.calculateQTc();
     this.markBrushStrokes();
-    this.shouldRenderChart = true;
+    
   }
 
   higlightQT(brushIndex: number) {
@@ -669,5 +675,15 @@ export class EcgDataDisplayComponent
     let filteredData = option!['series']![this.selectedSeriesIndex]['data'].slice(startTimeIndex, endTimeIndex + 1);
 
     return filteredData;
+  }
+
+  removeInterval(brushIndex: number) {
+    let option = this.chart?.getOption();
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'].splice(brushIndex, 1);
+    option!['series']![this.selectedSeriesIndex]['markLine']['data'].splice(brushIndex*2, 1);
+    option!['series']![this.selectedSeriesIndex]['markLine']['data'].splice(brushIndex*2, 1);
+    this.brushStrokes[this.selectedSeriesIndex].splice(brushIndex, 1);
+    this.chart?.setOption(option!);
+    this.calculateQTc();
   }
 }

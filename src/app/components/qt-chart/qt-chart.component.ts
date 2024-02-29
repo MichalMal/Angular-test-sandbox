@@ -1,4 +1,12 @@
-import { Component, ElementRef, Input, Renderer2, RendererFactory2, ViewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  Renderer2,
+  RendererFactory2,
+  ViewChild,
+} from '@angular/core';
 import * as echarts from 'echarts';
 
 @Component({
@@ -10,15 +18,14 @@ export class QtChartComponent {
   @Input() data = [];
   @Input() qtInterval = {};
   @ViewChild('chart') chartRef!: ElementRef;
+  // @Input() intervalTimeChange!: EventEmitter<any>;
 
   private chart: echarts.ECharts | undefined;
   private option: echarts.EChartsOption | null = null;
   private renderer: Renderer2;
   private resizeListener!: () => void;
 
-  constructor(
-    private rendererFactory: RendererFactory2,
-  ) {
+  constructor(private rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
   }
 
@@ -31,6 +38,7 @@ export class QtChartComponent {
           formatter: '{value}ms',
         },
         maxInterval: 200,
+        minInterval: 200,
         splitLine: {
           show: true,
           lineStyle: {
@@ -51,6 +59,7 @@ export class QtChartComponent {
       yAxis: {
         type: 'value',
         name: 'mv',
+        scale: true,
       },
       grid: {
         left: '5%',
@@ -79,10 +88,9 @@ export class QtChartComponent {
             label: {
               show: false,
             },
-            data:[
+            data: [
               {
-                label: 
-                {
+                label: {
                   formatter: 'R',
                   show: true,
                   color: '#f00',
@@ -90,8 +98,7 @@ export class QtChartComponent {
                 xAxis: this.qtInterval['R'],
               },
               {
-                label: 
-                {
+                label: {
                   formatter: 'S',
                   show: true,
                   color: '#f00',
@@ -107,9 +114,12 @@ export class QtChartComponent {
             color: '#2e2491',
           },
         },
-      
       ],
     };
+
+    // this.intervalTimeChange.subscribe((brushStrokes) => {
+    //   console.log(brushStrokes);
+    // });
   }
 
   ngAfterViewInit(): void {
@@ -117,6 +127,7 @@ export class QtChartComponent {
     this.resizeListener = this.renderer.listen('window', 'resize', () => {
       this.chart?.resize();
     });
+    this.chart?.getZr().on('click', this.handleGraphClick);
     this.updateChart();
   }
 
@@ -129,4 +140,31 @@ export class QtChartComponent {
   updateChart() {
     this.chart?.setOption(this.option!);
   }
+
+  handleGraphClick = (params: any) => {
+    // copy time value to clipboard
+
+    let pointInPixel = [params.offsetX, params.offsetY];
+    let option = this.chart?.getOption();
+    if (this.chart?.containPixel('grid', pointInPixel)) {
+      let pointInData = this.chart?.convertFromPixel('series', pointInPixel);
+      let closestSample = option!['series']![0]['data'].reduce((prev, curr) => {
+        return Math.abs(curr[0] - pointInData[0]) <
+          Math.abs(prev[0] - pointInData[0])
+          ? curr
+          : prev;
+      });
+
+      var xAxisValue = closestSample[0];
+
+      navigator.clipboard.writeText(xAxisValue.toString()).then(
+        function () {
+          console.log('Copying to clipboard was successful!');
+        },
+        function (err) {
+          console.error('Could not copy text: ', err);
+        }
+      );
+    }
+  };
 }

@@ -52,9 +52,9 @@
       </div>
     </div>
 
-    <div ngbAccordion [closeOthers]="true" >
-      <div ngbAccordionItem *ngFor="let brush of brushStrokes[selectedSeriesIndex]; index as i"
-        (mouseover)="higlightQT(i)" (mouseout)="dimmQT(i)" (shown)="onAcordianShow('qt-chart-' + i)" (hide)="currentRenderedChart = ''">
+    <div ngbAccordion [closeOthers]="true">
+      <div ngbAccordionItem="brushStrokesAccordion-{{i}}" *ngFor="let brush of brushStrokes[selectedSeriesIndex]; index as i"
+        (mouseover)="higlightQT(i)" (mouseout)="dimmQT(i)" (shown)="onAcordianShown('qt-chart-' + i)" (hide)="currentRenderedChart = ''">
         <h2 ngbAccordionHeader>
           <button ngbAccordionButton><i class="bi bi-distribute-horizontal text-success me-2"></i> QT Interval {{i+1}} -
             {{brush.endTime - brush.startTime}} ms</button>
@@ -63,18 +63,18 @@
           <div ngbAccordionBody>
             <ng-template>
               <div class="row">
-                <div class="col" *ngIf="brush.Qtc[1]">
+                <div class="col text-center" *ngIf="brush.Qtc[1]">
                   <b class="text-success" placement="top" ngbTooltip="QTc = QT / √RR">Bazett Qtc:</b> {{brush.Qtc[1]}} ms
                 </div>
-                <div class="col" *ngIf="brush.Qtc[2]">
+                <div class="col text-center" *ngIf="brush.Qtc[2]">
                   <b class="text-success" placement="top" ngbTooltip="QTc = QT + 0.154 * (1 - RR)">Framingham Qtc:</b> {{brush.Qtc[2]}} ms
                 </div>
-                <div class="col" *ngIf="brush.Qtc[3]">
+                <div class="col text-center" *ngIf="brush.Qtc[3]">
                   <b class="text-success" placement="top" ngbTooltip="QTc = QT / 3√RR">Fridericia Qtc:</b> {{brush.Qtc[3]}} ms
                 </div>
               </div>
               <hr>
-              <app-qt-chart *ngIf="shouldRenderChart && currentRenderedChart === 'qt-chart-' + i" [qtInterval]="brush" [data]="fetchQtData(brush)"></app-qt-chart>
+              <app-qt-chart *ngIf="currentRenderedChart === 'qt-chart-' + i" [qtInterval]="brush" [data]="fetchQtData(brush)"></app-qt-chart>
               <hr>
               <div class="row">
                 <div class="col-12">
@@ -123,7 +123,11 @@
                   </div>
                 </div>
               </div>
-             
+             <div class="row">
+              <div class="col-12">
+                <button class="btn btn-danger" (click)="removeInterval(i)">Remove</button>
+              </div>
+             </div>
             </ng-template>
           </div>
         </div>
