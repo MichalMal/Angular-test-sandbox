@@ -28,22 +28,52 @@
       </div>
     </div>
   </div>
+  <div *ngIf="responseData.data">
+    <div ngbAccordion>
+      <div ngbAccordionItem>
+        <h2 ngbAccordionHeader>
+          <button ngbAccordionButton>{{responseData.patientID}}</button>
+        </h2>
+        <div ngbAccordionCollapse>
+          <div ngbAccordionBody>
+            <ng-template>
+
+              <p>Algorithm Determination: {{responseData.algorithmDetermination}}</p>
+              <p>Patient ID: {{responseData.patientID}}</p>
+              <p>Local ID: {{responseData.id}}</p>
+              <p>Start DateTime: {{responseData.recordedAt}}</p>
+              <p>Duration: {{responseData.duration}}</p>
+
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <app-time-scale *ngIf="responseData._header" [timeScale]="timeScale"
   [dateTimeOfRecord]="responseData._header.recordingDate"
   (timeScaleChange)="onTimeScaleChange($event)"></app-time-scale>
+  <app-time-scale *ngIf="responseData.data" [timeScale]="timeScale"
+  [dateTimeOfRecord]="responseData.recordedAt"
+  (timeScaleChange)="onTimeScaleChange($event)"></app-time-scale>
 
-<div class="chart-block container-fluid sticky-top bg-white" style="overflow-x: hidden;" *ngIf="responseData._header">
-  <div #chart style="width: 100%; height: 300px;"></div>
+
+
+<div class="chart-block container-fluid sticky-top bg-white" style="overflow-x: hidden;" *ngIf="responseData._header || responseData.data">
+  <div #chart style="width: 100%; height: 400px;"></div>
 </div>
 
-<div class="container-fluid py-4" *ngIf="responseData._header">
+<div class="container-fluid py-4" *ngIf="responseData._header || responseData.data">
   <div class="card">
     <div class="card-header">
       <div class="row">
-        <div class="col">
+        <div class="col" *ngIf="responseData._header">
           <b>{{responseData._header.signalInfo[selectedSeriesIndex].label}}</b>
+        </div>
+        <div class="col" *ngIf="responseData.data">
+          <b>{{sampleNames[selectedSeriesIndex]}}</b>
         </div>
         <div class="col text-end"
           *ngIf="averageHr !== 0 && brushStrokes[selectedSeriesIndex].length !== 1 && brushStrokes[selectedSeriesIndex].length !== 0">
@@ -141,3 +171,4 @@
 <div *ngIf="isLoading" class="loading-screen">
   <p>Loading...</ p>
 </div>
+

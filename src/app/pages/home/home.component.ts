@@ -44,7 +44,7 @@ export class HomeComponent implements OnInit {
           .uploadJsonFile(file)
           .then((response) => {
             this.edfDataService.setEdfModel(response);
-            this.router.navigate(['/json-data']);
+            this.router.navigate(['/ecg-data']);
           })
           .catch((error) => {
             console.error('Error uploading JSON file:', error);

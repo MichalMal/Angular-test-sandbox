@@ -22,7 +22,6 @@ import { QtChartComponent } from './components/qt-chart/qt-chart.component';
 import { HomeComponent } from './pages/home/home.component';
 import { ContactUsComponent } from './pages/contact-us/contact-us.component';
 import { EcgDataDisplayComponent } from './pages/ecg-data-display/ecg-data-display.component';
-import { JsonDataDisplayComponent } from './pages/json-data-display/json-data-display.component';
 
 
 @NgModule({
@@ -34,8 +33,7 @@ import { JsonDataDisplayComponent } from './pages/json-data-display/json-data-di
     ContactUsComponent,
     EcgDataDisplayComponent,
     TimeScaleComponent,
-    QtChartComponent,
-    JsonDataDisplayComponent
+    QtChartComponent
   ],
   imports: [
     BrowserModule,

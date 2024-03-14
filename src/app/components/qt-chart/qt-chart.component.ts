@@ -38,12 +38,20 @@ export class QtChartComponent {
         axisLabel: {
           formatter: '{value}ms',
         },
+        axisLine: {
+          lineStyle: {
+            color: "#000",
+          },
+        },
+        axisTick: {
+          show: false,
+        },
         maxInterval: 200,
         minInterval: 200,
         splitLine: {
           show: true,
           lineStyle: {
-            color: '#999',
+            color: 'pink',
           },
         },
         minorTick: {
@@ -53,7 +61,8 @@ export class QtChartComponent {
         minorSplitLine: {
           show: true,
           lineStyle: {
-            color: '#ddd',
+            color: 'pink',
+            width: 0.5,
           },
         },
       },
@@ -61,6 +70,25 @@ export class QtChartComponent {
         type: 'value',
         name: 'mv',
         scale: true,
+        maxInterval: 0.5,
+        minInterval: 0.5,
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: 'pink',
+          },
+        },
+        minorTick: {
+          show: true,
+          splitNumber: 5,
+        },
+        minorSplitLine: {
+          show: true,
+          lineStyle: {
+            color: 'pink',
+            width: 0.5,
+          },
+        },
       },
       grid: {
         left: '5%',
