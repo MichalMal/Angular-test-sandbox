@@ -8,6 +8,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import * as echarts from 'echarts';
+import { ToasterAlertService } from 'src/app/services/toaster-alert.service';
 
 @Component({
   selector: 'app-qt-chart',
@@ -25,7 +26,7 @@ export class QtChartComponent {
   private renderer: Renderer2;
   private resizeListener!: () => void;
 
-  constructor(private rendererFactory: RendererFactory2) {
+  constructor(private rendererFactory: RendererFactory2, private toasterService: ToasterAlertService) {
     this.renderer = rendererFactory.createRenderer(null, null);
   }
 
@@ -158,8 +159,9 @@ export class QtChartComponent {
       var xAxisValue = closestSample[0];
 
       navigator.clipboard.writeText(xAxisValue.toString()).then(
-        function () {
+         () => {
           console.log('Copying to clipboard was successful!');
+          this.toasterService.showSuccess("Copied value to clipboard", "Success");
         },
         function (err) {
           console.error('Could not copy text: ', err);

@@ -7,7 +7,7 @@ import {
   AfterViewInit,
   Renderer2,
   RendererFactory2,
-  ChangeDetectorRef
+  ChangeDetectorRef,
 } from '@angular/core';
 import { EdfDataService } from 'src/app/services/edf-data.service';
 import { Subject } from 'rxjs';
@@ -19,21 +19,24 @@ import { Router } from '@angular/router';
 import { NgbAccordion } from '@ng-bootstrap/ng-bootstrap';
 
 import { chartTemplate } from 'src/app/constants/constants';
+import { ToasterAlertService } from 'src/app/services/toaster-alert.service';
 
 @Component({
-  selector: 'app-ecg-data-display',
-  templateUrl: './ecg-data-display.component.html',
-  styleUrls: ['./ecg-data-display.component.scss'],
+  selector: 'app-json-data-display',
+  templateUrl: './json-data-display.component.html',
+  styleUrls: ['./json-data-display.component.scss'],
 })
-export class EcgDataDisplayComponent
+export class JsonDataDisplayComponent
   implements OnInit, OnDestroy, AfterViewInit
 {
   responseData: any = {};
   isLoading: boolean = true;
-  timeScale = { start: 400000, end: 408000 };
+  timeScale = { start: 0, end: 30000 };
   currentRenderedChart = '';
   selectedSeriesIndex = 0;
   averageHr = 0;
+
+  sampleNames: string[] = [];
 
   brushStrokes: {
     startTime: number;
@@ -51,37 +54,39 @@ export class EcgDataDisplayComponent
 
   @ViewChild('chart') chartRef!: ElementRef;
   @ViewChild('accordion') accordion!: NgbAccordion;
+  Object: any;
 
   constructor(
     private rendererFactory: RendererFactory2,
     private edfDataService: EdfDataService,
     private router: Router,
-    private cdRef: ChangeDetectorRef
+    private cdRef: ChangeDetectorRef,
+    private toasterService: ToasterAlertService
   ) {
     this.renderer = rendererFactory.createRenderer(null, null);
   }
 
   ngOnInit(): void {
     this.option = chartTemplate;
-    this.option!.xAxis!['min'] = this.timeScale['start'],
-    this.option!.xAxis!['min'] = this.timeScale['start'],
-
-    this.edfDataService.dataRecords$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((response) => {
-        // console.log('Response from EdfDataService:', response);
-        if (response) {
-          this.responseData = response;
-          if (this.chart) {
-            this.updateChart();
+    (this.option!.xAxis!['min'] = this.timeScale['start']),
+      (this.option!.xAxis!['min'] = this.timeScale['start']),
+      this.edfDataService.dataRecords$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((response) => {
+          // console.log('Response from EdfDataService:', response);
+          if (response) {
+            this.responseData = response;
+            if (this.chart) {
+              this.updateChart();
+            }
+            this.isLoading = false;
+            this.sampleNames = Object.keys(this.responseData.data.enhanced.samples) as Array<string>;
           }
-          this.isLoading = false;
-        }
-      });
+        });
   }
 
   ngAfterViewInit(): void {
-    if (!this.responseData._header) {
+    if (!this.responseData.data) {
       this.router.navigate(['/']);
     }
 
@@ -94,7 +99,7 @@ export class EcgDataDisplayComponent
     });
 
     this.updateChart();
- 
+
     if (this.chart) {
       this.chart.dispatchAction({
         type: 'takeGlobalCursor',
@@ -132,122 +137,103 @@ export class EcgDataDisplayComponent
     this.isLoading = true;
     try {
       if (this.chart && this.responseData) {
-        const numberOfSignals = parseInt(this.responseData._header.nbSignals);
-        let countDuration: Decimal = new Decimal(
-          this.responseData._header.durationDataRecordsSec
-        ).times(1000);
+        const numberOfSignals = Object.keys(
+          this.responseData.data.enhanced.samples
+        ).length;
 
         for (let i = 0; i < numberOfSignals; i++) {
-          if (
-            this.responseData._header.signalInfo[i].label !== 'EDF Annotations'
-          ) {
-            const numberOfSamplesPerTimeDuration = parseInt(
-              this.responseData._header.signalInfo[i].nbOfSamples
-            );
+          const numberOfSamplesPerTimeDuration = this.responseData.data.enhanced
+            .amplitudeResolution as number;
 
-            let duration: Decimal = new Decimal(0);
-
-            let newSeries: echarts.LineSeriesOption = {
-              name: this.responseData._header.signalInfo[i].label,
-              type: 'line',
-              sampling: 'lttb',
+          let newSeries: echarts.LineSeriesOption = {
+            name: Object.keys(this.responseData.data.enhanced.samples)[i],
+            type: 'line',
+            sampling: 'lttb',
+            symbol: 'none',
+            data: [] as [number, number][],
+            step: 'middle',
+            itemStyle: {
+              color: '#2e2491',
+            },
+            markLine: {
+              silent: true,
               symbol: 'none',
-              data: [] as [number, number][],
-              step: 'middle',
+              lineStyle: {
+                color: 'rgba(242, 25, 25, 0.4)',
+                type: 'solid',
+              },
+              label: {
+                show: false,
+              },
+              data:
+                this.brushStrokes &&
+                this.brushStrokes[i] &&
+                this.brushStrokes[i][0]
+                  ? this.brushStrokes[i].map((interval) => {
+                      return { xAxis: interval['R'] };
+                      // return { xAxis: interval['S'] };   // figure out later
+                    })
+                  : [],
+            },
+            markArea: {
+              label: {
+                position: 'insideTop',
+                color: '#000',
+              },
               itemStyle: {
-                color: '#2e2491',
+                color: 'rgba(255, 173, 177, 0.4)',
               },
-              markLine: {
-                silent: true,
-                symbol: 'none',
-                lineStyle: {
-                  color: 'rgba(242, 25, 25, 0.4)',
-                  type: 'solid',
-                },
-                label: {
-                  show: false,
-                },
-                data:
-                  this.brushStrokes &&
-                  this.brushStrokes[i] &&
-                  this.brushStrokes[i][0]
-                    ? this.brushStrokes[i].map((interval) => {
-                        return { xAxis: interval['R'] };
-                        // return { xAxis: interval['S'] };   // figure out later
-                      })
-                    : [],
-              },
-              markArea: {
-                label: {
-                  position: 'insideTop',
-                  color: '#000',
-                },
-                itemStyle: {
-                  color: 'rgba(255, 173, 177, 0.4)',
-                },
-                data:
-                  this.brushStrokes &&
-                  this.brushStrokes[i] &&
-                  this.brushStrokes[i][0]
-                    ? this.brushStrokes[i].map((interval) => {
-                        return [
-                          {
-                            xAxis: interval['startTime'],
-                          },
-                          {
-                            xAxis: interval['endTime'],
-                          },
-                        ];
-                      })
-                    : [],
-              },
-            };
-
-            if (this.option?.legend && !Array.isArray(this.option.legend)) {
-              this.option.legend.selected = this.option.legend.selected || {};
-              this.option.legend.selected[
-                `${this.responseData._header.signalInfo[i].label}`
-              ] = i === 0;
-            }
-
-            this.responseData._rawSignals[i].forEach(
-              (dataRecordDuration) => {
-                if (
-                  duration.greaterThanOrEqualTo(this.timeScale.start) &&
-                  duration.lessThanOrEqualTo(this.timeScale.end)
-                ) {
-                  Object.entries(dataRecordDuration).forEach(
-                    ([hzIndex, value]) => {
-                      const data: [number, number] = [
-                        duration
-                          .plus(
-                            countDuration.times(
-                              parseInt(hzIndex) / numberOfSamplesPerTimeDuration
-                            )
-                          )
-                          .toNumber(),
-                        value as number,
+              data:
+                this.brushStrokes &&
+                this.brushStrokes[i] &&
+                this.brushStrokes[i][0]
+                  ? this.brushStrokes[i].map((interval) => {
+                      return [
+                        {
+                          xAxis: interval['startTime'],
+                        },
+                        {
+                          xAxis: interval['endTime'],
+                        },
                       ];
-                      newSeries.data?.push(data);
-                    }
-                  );
-                }
-                duration = duration.plus(countDuration);
-              }
-            );
+                    })
+                  : [],
+            },
+          };
 
+          if (this.option?.legend && !Array.isArray(this.option.legend)) {
+            this.option.legend.selected = this.option.legend.selected || {};
+            this.option.legend.selected[
+              `${Object.keys(this.responseData.data.enhanced.samples)[i]}`
+            ] = i === 0;
+          }
 
-            this.option!.tooltip!['formatter'] = (params: any) => {
-              var date = new Date(this.responseData._header.recordingDate);
-              date.setMilliseconds(date.getMilliseconds() + (params[0].value[0]));
+          this.responseData.data.enhanced.samples[
+            Object.keys(this.responseData.data.enhanced.samples)[i]
+          ].forEach((value, hrzIndex) => {
+            const data: [number, number] = [(hrzIndex/this.responseData.data.enhanced.frequency)*1000 as number, value/1000];
+            // console.log('data', data);
+            newSeries.data?.push(data);
+          });
 
-              let formattedString = moment(date).format('dddd, Do MMMM YYYY') + '<br/><b style="font-size: 12px">' + moment(date).format('H:mm:ss') + ':' + date.getMilliseconds() + '</b><br/>' + params[0].value[1] + ' mv';
-              return formattedString;
-            };
+          this.option!.tooltip!['formatter'] = (params: any) => {
+            var date = new Date(this.responseData.recordedAt);
+            date.setMilliseconds(date.getMilliseconds() + params[0].value[0]);
 
-            if (Array.isArray(this.option?.series)) {
-              this.option?.series.push(newSeries);
-            }
+            let formattedString =
+              moment(date).format('dddd, Do MMMM YYYY') +
+              '<br/><b style="font-size: 12px">' +
+              moment(date).format('H:mm:ss') +
+              ':' +
+              date.getMilliseconds() +
+              '</b><br/>' +
+              params[0].value[1] +
+              ' mv';
+            return formattedString;
+          };
+
+          if (Array.isArray(this.option?.series)) {
+            this.option?.series.push(newSeries);
           }
         }
 
@@ -262,7 +248,7 @@ export class EcgDataDisplayComponent
   }
 
   async onAcordianShown(panelId: string) {
-    await new Promise(f => setTimeout(f, 100));
+    await new Promise((f) => setTimeout(f, 100));
     this.currentRenderedChart = panelId;
   }
 
@@ -307,10 +293,9 @@ export class EcgDataDisplayComponent
     this.option!.series = [];
     this.timeScale = newTimeScale;
 
-    this.option!.xAxis!['min'] = this.timeScale['start'],
-    this.option!.xAxis!['max'] = this.timeScale['end'],
-
-    this.updateChart();
+    (this.option!.xAxis!['min'] = this.timeScale['start']),
+      (this.option!.xAxis!['max'] = this.timeScale['end']),
+      this.updateChart();
   }
 
   handleLegendClick = (params: any) => {
@@ -460,7 +445,6 @@ export class EcgDataDisplayComponent
           [
             {
               xAxis: brush['startTime'],
-
             },
             {
               xAxis: brush['endTime'],
@@ -495,20 +479,24 @@ export class EcgDataDisplayComponent
       this.brushStrokes[this.selectedSeriesIndex][0]['Qtc'] = [];
 
       this.brushStrokes[this.selectedSeriesIndex].forEach((series, i) => {
-        
-        let QTInterval = series.endTime - series.startTime
-        
-        if (this.brushStrokes[this.selectedSeriesIndex][i+1]) {
-          let RRInterval = this.brushStrokes[this.selectedSeriesIndex][i+1]['R'] - series.R
-          
-          let Bqtc = ((QTInterval/1000) / Math.sqrt((RRInterval/1000))) * 1000;
-          this.brushStrokes[this.selectedSeriesIndex][i+1]['Qtc'][1] =  Math.round(Bqtc * 100) / 100;
-          
-          let Fqtc = ((QTInterval/1000) + 0.154 * (1 - (RRInterval/1000))) * 1000;
-          this.brushStrokes[this.selectedSeriesIndex][i+1]['Qtc'][2] = Math.round(Fqtc * 100) / 100;
+        let QTInterval = series.endTime - series.startTime;
 
-          let Fdqtc = ((QTInterval/1000) / Math.cbrt((RRInterval/1000))) * 1000;
-          this.brushStrokes[this.selectedSeriesIndex][i+1]['Qtc'][3] = Math.round(Fdqtc * 100) / 100;
+        if (this.brushStrokes[this.selectedSeriesIndex][i + 1]) {
+          let RRInterval =
+            this.brushStrokes[this.selectedSeriesIndex][i + 1]['R'] - series.R;
+
+          let Bqtc = (QTInterval / 1000 / Math.sqrt(RRInterval / 1000)) * 1000;
+          this.brushStrokes[this.selectedSeriesIndex][i + 1]['Qtc'][1] =
+            Math.round(Bqtc * 100) / 100;
+
+          let Fqtc =
+            (QTInterval / 1000 + 0.154 * (1 - RRInterval / 1000)) * 1000;
+          this.brushStrokes[this.selectedSeriesIndex][i + 1]['Qtc'][2] =
+            Math.round(Fqtc * 100) / 100;
+
+          let Fdqtc = (QTInterval / 1000 / Math.cbrt(RRInterval / 1000)) * 1000;
+          this.brushStrokes[this.selectedSeriesIndex][i + 1]['Qtc'][3] =
+            Math.round(Fdqtc * 100) / 100;
         }
       });
 
@@ -518,27 +506,30 @@ export class EcgDataDisplayComponent
         }
       );
 
-      let RRIntervalSum = 0
+      let RRIntervalSum = 0;
       RRIntervals.forEach((interval, i) => {
         if (i !== 0) {
           RRIntervalSum += interval - RRIntervals[i - 1];
         }
       });
 
-      let hr = 60000 /(RRIntervalSum / (RRIntervals.length - 1));
+      let hr = 60000 / (RRIntervalSum / (RRIntervals.length - 1));
       this.averageHr = Math.round(hr * 100) / 100;
     } else {
       this.averageHr = 0;
     }
   }
 
-  onIntervalTimeChange(brush: {
-    startTime: number;
-    endTime: number;
-    R: number;
-    S: number;
-    Qtc: number[];
-  }[], accordionIndex: number): void {
+  onIntervalTimeChange(
+    brush: {
+      startTime: number;
+      endTime: number;
+      R: number;
+      S: number;
+      Qtc: number[];
+    }[],
+    accordionIndex: number
+  ): void {
     this.cdRef.detectChanges();
 
     this.brushStrokes[this.selectedSeriesIndex] = brush;
@@ -554,17 +545,21 @@ export class EcgDataDisplayComponent
 
   higlightQT(brushIndex: number) {
     let option = this.chart?.getOption();
-    option!['series']![this.selectedSeriesIndex]['markArea']['data'][brushIndex][0]['itemStyle'] = {
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+      brushIndex
+    ][0]['itemStyle'] = {
       color: 'rgba(255, 173, 177, 0.7)',
-    }
+    };
     this.chart?.setOption(option!);
   }
 
   dimmQT(brushIndex: number) {
     let option = this.chart?.getOption();
-    option!['series']![this.selectedSeriesIndex]['markArea']['data'][brushIndex][0]['itemStyle'] = {
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+      brushIndex
+    ][0]['itemStyle'] = {
       color: 'rgba(255, 173, 177, 0.4)',
-    }
+    };
     this.chart?.setOption(option!);
   }
 
@@ -584,16 +579,27 @@ export class EcgDataDisplayComponent
       'data'
     ].findIndex((sample) => sample[0] === brush.endTime);
 
-    let filteredData = option!['series']![this.selectedSeriesIndex]['data'].slice(startTimeIndex, endTimeIndex + 1);
+    let filteredData = option!['series']![this.selectedSeriesIndex][
+      'data'
+    ].slice(startTimeIndex, endTimeIndex + 1);
 
     return filteredData;
   }
 
   removeInterval(brushIndex: number) {
     let option = this.chart?.getOption();
-    option!['series']![this.selectedSeriesIndex]['markArea']['data'].splice(brushIndex, 1);
-    option!['series']![this.selectedSeriesIndex]['markLine']['data'].splice(brushIndex*2, 1);
-    option!['series']![this.selectedSeriesIndex]['markLine']['data'].splice(brushIndex*2, 1);
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'].splice(
+      brushIndex,
+      1
+    );
+    option!['series']![this.selectedSeriesIndex]['markLine']['data'].splice(
+      brushIndex * 2,
+      1
+    );
+    option!['series']![this.selectedSeriesIndex]['markLine']['data'].splice(
+      brushIndex * 2,
+      1
+    );
     this.brushStrokes[this.selectedSeriesIndex].splice(brushIndex, 1);
     this.chart?.setOption(option!);
     this.calculateQTc();

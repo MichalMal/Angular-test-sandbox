@@ -36,7 +36,20 @@ export class HomeComponent implements OnInit {
             console.error('Error uploading EDF file:', error);
           })
           .finally(() => {
-            console.log('EDF file uploaded successfully');
+            this.isLoading = false;
+          });
+      } else if (file.name.split('.')?.pop()?.toLowerCase() === 'json') {
+        this.isLoading = true;
+        this.edfParserService
+          .uploadJsonFile(file)
+          .then((response) => {
+            this.edfDataService.setEdfModel(response);
+            this.router.navigate(['/json-data']);
+          })
+          .catch((error) => {
+            console.error('Error uploading JSON file:', error);
+          })
+          .finally(() => {
             this.isLoading = false;
           });
       } else {
