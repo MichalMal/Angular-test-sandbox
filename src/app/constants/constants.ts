@@ -32,7 +32,7 @@ export const chartTemplate: any = {
       show: true,
       lineStyle: {
         color: 'pink',
-        width: 0.5,
+        width: 0.3,
       },
     },
   },
@@ -40,8 +40,8 @@ export const chartTemplate: any = {
     type: 'value',
     name: 'mv',
     scale: true,
-    max: 6,
-    min: -6,
+    // max: 6,
+    // min: -6,
     maxInterval: 0.5,
     minInterval: 0.5,
     // axisTick: {
@@ -66,7 +66,7 @@ export const chartTemplate: any = {
       show: true,
       lineStyle: {
         color: 'pink',
-        width: 0.5,
+        width: 0.3,
       },
     },
   },

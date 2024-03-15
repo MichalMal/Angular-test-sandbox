@@ -18,7 +18,7 @@ export class TimeScaleComponent {
 
   addSeconds(seconds) {
     const dateCopy = new Date(this.dateTimeOfRecord);
-    dateCopy.setSeconds(dateCopy.getSeconds() + seconds);
+    dateCopy.setMilliseconds(dateCopy.getMilliseconds() + seconds);
     return dateCopy;
   }
 }

@@ -32,7 +32,7 @@ export class EcgDataDisplayComponent
   responseData: any = {};
   isLoading: boolean = true;
   // timeScale = { start: 430000, end: 480000 };
-  timeScale = { start: 0, end: 10000 };
+  timeScale = { start: 0, end: 30000 };
   currentRenderedChart = '';
   selectedSeriesIndex = 0;
   averageHr = 0;
@@ -68,7 +68,7 @@ export class EcgDataDisplayComponent
   ngOnInit(): void {
     this.option = chartTemplate;
     this.option!.xAxis!['min'] = this.timeScale['start'];
-    this.option!.xAxis!['min'] = this.timeScale['start'];
+    this.option!.xAxis!['max'] = this.timeScale['end'];
 
     this.edfDataService.dataRecords$
       .pipe(takeUntil(this.destroy$))
