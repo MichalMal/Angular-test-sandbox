@@ -62,7 +62,7 @@ export class QtChartComponent {
           show: true,
           lineStyle: {
             color: 'pink',
-            width: 0.5,
+            width: 0.3,
           },
         },
       },
@@ -86,7 +86,7 @@ export class QtChartComponent {
           show: true,
           lineStyle: {
             color: 'pink',
-            width: 0.5,
+            width: 0.3,
           },
         },
       },

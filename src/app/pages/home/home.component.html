@@ -1,11 +1,11 @@
 <div class="container mt-4">
     <div class="row">
         <div class="col-12">
-            <div>
-                <h2>Upload EDF+ File</h2>
-                <input type="file" (change)="onFileSelected($event)" accept=".edf, .edfplus, .json" />
+            <div class="mb-3">
+                <label for="formFile" class="form-label">Upload EDF or Holter JSON File</label>
+                <input class="form-control" type="file" id="formFile" (change)="onFileSelected($event)"
+                    accept=".edf, .edfplus, .json">
             </div>
-
         </div>
     </div>
 </div>

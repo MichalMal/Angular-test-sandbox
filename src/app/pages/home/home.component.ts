@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { EdfParserService } from 'src/app/services/edf-parser.service';
 import { EdfDataService } from 'src/app/services/edf-data.service'; // Import the shared service
+import { ToasterAlertService } from 'src/app/services/toaster-alert.service';
+
 
 @Component({
   selector: 'app-home',
@@ -14,7 +16,8 @@ export class HomeComponent implements OnInit {
   constructor(
     private edfParserService: EdfParserService,
     private router: Router, // Inject the Router
-    private edfDataService: EdfDataService // Inject the shared service
+    private edfDataService: EdfDataService, // Inject the shared service
+    private toasterService: ToasterAlertService
   ) {}
 
   ngOnInit(): void {
@@ -34,6 +37,7 @@ export class HomeComponent implements OnInit {
           })
           .catch((error) => {
             console.error('Error uploading EDF file:', error);
+          this.toasterService.showError(error.message, "Error uploading EDF file:");
           })
           .finally(() => {
             this.isLoading = false;
@@ -48,6 +52,7 @@ export class HomeComponent implements OnInit {
           })
           .catch((error) => {
             console.error('Error uploading JSON file:', error);
+          this.toasterService.showError(error.message, "Error uploading EDF file:");
           })
           .finally(() => {
             this.isLoading = false;
