@@ -21,7 +21,7 @@ export const chartTemplate: any = {
     splitLine: {
       show: true,
       lineStyle: {
-        color: 'pink',
+        color: 'rgba(255, 194, 204, 0.7)',
       },
     },
     minorTick: {
@@ -31,7 +31,7 @@ export const chartTemplate: any = {
     minorSplitLine: {
       show: true,
       lineStyle: {
-        color: 'pink',
+        color: 'rgba(255, 194, 204, 0.7)',
         width: 0.3,
       },
     },
@@ -55,7 +55,7 @@ export const chartTemplate: any = {
     splitLine: {
       show: true,
       lineStyle: {
-        color: 'pink',
+        color: 'rgba(255, 194, 204, 0.7)',
       },
     },
     minorTick: {
@@ -68,7 +68,7 @@ export const chartTemplate: any = {
     minorSplitLine: {
       show: true,
       lineStyle: {
-        color: 'pink',
+        color: 'rgba(255, 194, 204, 0.7)',
         width: 0.3,
       },
     },

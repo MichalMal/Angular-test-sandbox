@@ -347,7 +347,6 @@ export class EcgDataDisplayComponent
         lineStyle: {
           color: 'black',
           type: 'solid',
-          width: 2,
         },
       },
     ];
