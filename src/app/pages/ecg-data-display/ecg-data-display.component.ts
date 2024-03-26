@@ -67,7 +67,7 @@ export class EcgDataDisplayComponent
 
   ngOnInit(): void {
     this.option = chartTemplate;
-    this.option!.xAxis!['min'] = this.timeScale['start'];
+    this.option!.xAxis!['min'] = this.timeScale['start'] - 600;
     this.option!.xAxis!['max'] = this.timeScale['end'];
 
     this.edfDataService.dataRecords$
@@ -185,15 +185,7 @@ export class EcgDataDisplayComponent
               label: {
                 show: false,
               },
-              data:
-                this.brushStrokes &&
-                this.brushStrokes[i] &&
-                this.brushStrokes[i][0]
-                  ? this.brushStrokes[i].map((interval) => {
-                      return { xAxis: interval['R'] };
-                      // return { xAxis: interval['S'] };   // figure out later
-                    })
-                  : [],
+              data: this.mapMarkLineData(this.brushStrokes[i]),
             },
             markArea: {
               label: {
@@ -234,27 +226,44 @@ export class EcgDataDisplayComponent
               this.responseData._header.signalInfo[i].nbOfSamples
             );
 
+            newSeries.data?.push([this.timeScale['start'] - 600, 0]);
+            newSeries.data?.push([this.timeScale['start'] - 400, 0]);
+            newSeries.data?.push([this.timeScale['start'] - 400, 1]);
+            newSeries.data?.push([this.timeScale['start'] - 200, 1]);
+            newSeries.data?.push([this.timeScale['start'] - 200, 0]);
+            newSeries.data?.push([this.timeScale['start'], 0]);
+
             this.responseData._rawSignals[i].forEach((dataRecordDuration) => {
-              if (
-                duration.greaterThanOrEqualTo(this.timeScale.start) &&
-                duration.lessThanOrEqualTo(this.timeScale.end)
-              ) {
-                Object.entries(dataRecordDuration).forEach(
-                  ([hzIndex, value]) => {
-                    const data: [number, number] = [
-                      duration
-                        .plus(
-                          countDuration.times(
-                            parseInt(hzIndex) / numberOfSamplesPerTimeDuration
-                          )
+              Object.entries(dataRecordDuration).forEach(([hzIndex, value]) => {
+                if (
+                  duration
+                    .plus(
+                      countDuration.times(
+                        parseInt(hzIndex) / numberOfSamplesPerTimeDuration
+                      )
+                    )
+                    .greaterThanOrEqualTo(this.timeScale.start) &&
+                  duration
+                    .plus(
+                      countDuration.times(
+                        parseInt(hzIndex) / numberOfSamplesPerTimeDuration
+                      )
+                    )
+                    .lessThanOrEqualTo(this.timeScale.end)
+                ) {
+                  const data: [number, number] = [
+                    duration
+                      .plus(
+                        countDuration.times(
+                          parseInt(hzIndex) / numberOfSamplesPerTimeDuration
                         )
-                        .toNumber(),
-                      (value as number) / 1000,
-                    ];
-                    newSeries.data?.push(data);
-                  }
-                );
-              }
+                      )
+                      .toNumber(),
+                    (value as number) / 1000,
+                  ];
+                  newSeries.data?.push(data);
+                }
+              });
               duration = duration.plus(countDuration);
             });
 
@@ -270,16 +279,30 @@ export class EcgDataDisplayComponent
               ] = i === 0;
             }
 
+            newSeries.data?.push([this.timeScale['start'] - 600, 0]);
+            newSeries.data?.push([this.timeScale['start'] - 400, 0]);
+            newSeries.data?.push([this.timeScale['start'] - 400, 1]);
+            newSeries.data?.push([this.timeScale['start'] - 200, 1]);
+            newSeries.data?.push([this.timeScale['start'] - 200, 0]);
+            newSeries.data?.push([this.timeScale['start'], 0]);
+
             this.responseData.data.enhanced.samples[
               Object.keys(this.responseData.data.enhanced.samples)[i]
             ].forEach((value, hrzIndex) => {
-              const data: [number, number] = [
-                ((hrzIndex / this.responseData.data.enhanced.frequency) *
-                  1000) as number,
-                value / 1000,
-              ];
-              // console.log('data', data);
-              newSeries.data?.push(data);
+              if (
+                (hrzIndex / this.responseData.data.enhanced.frequency) * 1000 >=
+                  this.timeScale['start'] &&
+                (hrzIndex / this.responseData.data.enhanced.frequency) * 1000 <=
+                  this.timeScale['end']
+              ) {
+                const data: [number, number] = [
+                  ((hrzIndex / this.responseData.data.enhanced.frequency) *
+                    1000) as number,
+                  value / 1000,
+                ];
+                // console.log('data', data);
+                newSeries.data?.push(data);
+              }
             });
 
             date = new Date(this.responseData.recordedAt);
@@ -315,6 +338,57 @@ export class EcgDataDisplayComponent
       console.error(error);
     }
     this.isLoading = false;
+  }
+
+  mapMarkLineData(brushStrokes: any) {
+    let markLines: {}[] = [
+      {
+        xAxis: this.timeScale['start'],
+        lineStyle: {
+          color: 'black',
+          type: 'solid',
+          width: 2,
+        },
+      },
+    ];
+    if (brushStrokes) {
+      brushStrokes.forEach((brush) => {
+        markLines.push({ xAxis: brush['R'] });
+        markLines.push({ xAxis: brush['S'] });
+      });
+    }
+    return markLines;
+  }
+
+  updateYZoom(event: any) {
+    let option = this.chart?.getOption();
+
+    console.log(event.value, option!['yAxis']![0]!['min'])
+    switch (event.value) {
+      case '1':
+        option!['yAxis']![0]!['min'] = -8;
+        option!['yAxis']![0]!['max'] = 8;
+        break;
+      case '2':
+        option!['yAxis']![0]!['min'] = -4;
+        option!['yAxis']![0]!['max'] = 4;
+        break;
+      case '3':
+        option!['yAxis']![0]!['min'] = -2;
+        option!['yAxis']![0]!['max'] = 2;
+        break;
+      case '4':
+        option!['yAxis']![0]!['min'] = -1.2;
+        option!['yAxis']![0]!['max'] = 1.2;
+        break;
+      default:
+        option!['yAxis']![0]!['min'] = null;
+        option!['yAxis']![0]!['max'] = null;
+        break;
+    }
+    console.log(event.value, option!['yAxis']!['min']);
+
+    this.chart?.setOption(option!, true);
   }
 
   async onAcordianShown(panelId: string) {
@@ -358,7 +432,7 @@ export class EcgDataDisplayComponent
     this.option!.series = [];
     this.timeScale = newTimeScale;
 
-    (this.option!.xAxis!['min'] = this.timeScale['start']),
+    (this.option!.xAxis!['min'] = this.timeScale['start'] - 600),
       (this.option!.xAxis!['max'] = this.timeScale['end']),
       this.updateChart();
   }

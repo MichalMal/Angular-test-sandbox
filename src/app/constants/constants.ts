@@ -10,7 +10,7 @@ export const chartTemplate: any = {
     },
     axisLine: {
       lineStyle: {
-        color: "#000",
+        color: '#000',
       },
     },
     axisTick: {
@@ -39,9 +39,9 @@ export const chartTemplate: any = {
   yAxis: {
     type: 'value',
     name: 'mv',
-    scale: true,
-    // max: 6,
-    // min: -6,
+    // max: 8,
+    // min: -8,
+    position: 'left',
     maxInterval: 0.5,
     minInterval: 0.5,
     // axisTick: {
@@ -49,6 +49,9 @@ export const chartTemplate: any = {
     //     width: 1
     //   },
     // },
+    axisLine: {
+      onZero: false,
+    },
     splitLine: {
       show: true,
       lineStyle: {
@@ -59,8 +62,8 @@ export const chartTemplate: any = {
       show: true,
       splitNumber: 5,
       lineStyle: {
-        width: 0.3
-      }
+        width: 0.3,
+      },
     },
     minorSplitLine: {
       show: true,
@@ -73,6 +76,7 @@ export const chartTemplate: any = {
   grid: {
     left: '5%',
     right: '5%',
+    top: '18%',
   },
   legend: {
     show: true,
@@ -100,10 +104,10 @@ export const chartTemplate: any = {
     feature: {
       brush: {
         title: {
-          lineX: 'Select QT Intervals'
-        }
-      }
-    }
+          lineX: 'Select QT Intervals',
+        },
+      },
+    },
   },
   brush: {
     toolbox: ['lineX'],
@@ -128,24 +132,25 @@ export const chartTemplate: any = {
     {
       type: 'slider',
       xAxisIndex: 0,
-      filterMode: "none"
+      // filterMode: 'none',
     },
-    {
-      type: 'slider',
-      yAxisIndex: 0,
-      filterMode: "none",
-      right: '3%',
-    },
+    // {
+    //   type: 'slider',
+    //   yAxisIndex: 0,
+    //   filterMode: 'none',
+    //   right: '3%',
+    // },
     {
       type: 'inside',
       xAxisIndex: 0,
       moveOnMouseMove: true,
+      // filterMode: 'none',
     },
-    {
-      type: 'inside',
-      yAxisIndex: 0,
-      moveOnMouseMove: true,
-    },
+    // {
+    //   type: 'inside',
+    //   yAxisIndex: 0,
+    //   moveOnMouseMove: true,
+    // },
   ],
   series: [] as any[],
 };

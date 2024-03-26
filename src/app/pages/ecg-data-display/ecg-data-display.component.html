@@ -60,7 +60,20 @@
   [dateTimeOfRecord]="responseData.recordedAt"
   (timeScaleChange)="onTimeScaleChange($event)"></app-time-scale>
 
-
+<div class="container">
+  <div class="row justify-content-end">
+    <div class="col-lg-3">
+      <!-- <label  class="form-label form-label-sm">Y Axis Zoom</label> -->
+      <select class="form-select form-select-sm" aria-label="y-axis-zoom" (change)="updateYZoom($event.target)">
+        <option selected value='default'>default Scaling</option>
+        <option value='1'>1x</option>
+        <option value="2">2x</option>
+        <option value="3">3x</option>
+        <option value="4">4x</option>
+      </select>
+    </div>
+  </div>
+</div>
 
 <div class="chart-block container-fluid sticky-top bg-white" style="overflow-x: hidden;" *ngIf="responseData._header || responseData.data">
   <div #chart style="width: 100%; height: 400px;"></div>
