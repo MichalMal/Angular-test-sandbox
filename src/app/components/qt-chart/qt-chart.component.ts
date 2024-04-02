@@ -145,10 +145,6 @@ export class QtChartComponent {
         },
       ],
     };
-
-    // this.intervalTimeChange.subscribe((brushStrokes) => {
-    //   console.log(brushStrokes);
-    // });
   }
 
   ngAfterViewInit(): void {

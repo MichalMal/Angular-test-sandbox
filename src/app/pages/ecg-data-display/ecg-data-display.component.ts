@@ -362,7 +362,6 @@ export class EcgDataDisplayComponent
   updateYZoom(event: any) {
     let option = this.chart?.getOption();
 
-    console.log(event.value, option!['yAxis']![0]!['min'])
     switch (event.value) {
       case '1':
         option!['yAxis']![0]!['min'] = -8;
@@ -385,7 +384,6 @@ export class EcgDataDisplayComponent
         option!['yAxis']![0]!['max'] = null;
         break;
     }
-    console.log(event.value, option!['yAxis']!['min']);
 
     this.chart?.setOption(option!, true);
   }

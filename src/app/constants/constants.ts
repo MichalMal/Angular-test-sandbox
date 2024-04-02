@@ -31,7 +31,7 @@ export const chartTemplate: any = {
     minorSplitLine: {
       show: true,
       lineStyle: {
-        color: 'rgba(255, 194, 204, 0.7)',
+        color: 'pink',
         width: 0.3,
       },
     },
@@ -68,7 +68,7 @@ export const chartTemplate: any = {
     minorSplitLine: {
       show: true,
       lineStyle: {
-        color: 'rgba(255, 194, 204, 0.7)',
+        color: 'pink',
         width: 0.3,
       },
     },
