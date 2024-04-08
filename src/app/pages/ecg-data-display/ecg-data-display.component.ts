@@ -37,6 +37,7 @@ export class EcgDataDisplayComponent
   selectedSeriesIndex = 0;
   averageHr = 0;
   sampleNames: string[] = [];
+  AvQTc = 0; 
   smallCharts: Boolean = true;
 
   brushStrokes: {
@@ -540,6 +541,8 @@ export class EcgDataDisplayComponent
   markBrushStrokes() {
     let option = this.chart?.getOption();
 
+    this.smallCharts = false;
+    this.cdRef.detectChanges();
     option!['series']![this.selectedSeriesIndex]['markArea'] = {
       label: {
         position: 'insideTop',
@@ -599,7 +602,8 @@ export class EcgDataDisplayComponent
         ];
       }
     });
-
+    this.smallCharts = true;
+    this.cdRef.detectChanges();
     this.chart?.setOption(option!);
   }
 
@@ -647,6 +651,14 @@ export class EcgDataDisplayComponent
         }
       });
 
+      let QtcSum = 0;
+      this.brushStrokes[this.selectedSeriesIndex].forEach((interval) => {
+        if (interval.Qtc[1]) {
+          QtcSum += interval.Qtc[1];
+          this.AvQTc = Math.round((QtcSum / (this.brushStrokes[this.selectedSeriesIndex].length - 1)));
+        }
+      });
+      
       let hr = 60000 / (RRIntervalSum / (RRIntervals.length - 1));
       this.averageHr = Math.round(hr * 100) / 100;
     } else {
@@ -718,7 +730,6 @@ export class EcgDataDisplayComponent
 
       let markAreaData =
         option!['series']![this.selectedSeriesIndex]['markArea']['data'];
-      console.log(markAreaData);
 
       for (let i = 0; i < markAreaData.length; i++) {
         if (
@@ -750,12 +761,13 @@ export class EcgDataDisplayComponent
 
     let filteredData = option!['series']![this.selectedSeriesIndex][
       'data'
-    ].slice(startTimeIndex, endTimeIndex + 1);
+    ].slice((startTimeIndex-10), (endTimeIndex+10));
     return filteredData;
   }
 
   removeInterval(brushIndex: number) {
     let option = this.chart?.getOption();
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'].pop();
     option!['series']![this.selectedSeriesIndex]['markArea']['data'].splice(
       brushIndex,
       1
@@ -769,6 +781,16 @@ export class EcgDataDisplayComponent
       1
     );
     this.brushStrokes[this.selectedSeriesIndex].splice(brushIndex, 1);
+    this.chart?.setOption(option!);
+    this.calculateQTc();
+  }
+
+  removeAllIntervals() {
+
+    this.brushStrokes[this.selectedSeriesIndex] = [];
+    let option = this.chart?.getOption();
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
+    option!['series']![this.selectedSeriesIndex]['markLine']['data'] = [];
     this.chart?.setOption(option!);
     this.calculateQTc();
   }

@@ -128,7 +128,7 @@ export class QtChartComponent implements OnChanges {
         // show: false,
         trigger: 'axis',
         position: function (pt) {
-          return [pt[0], '10%'];
+          return [pt[0], '-30%'];
         },
       },
       series: [
@@ -181,12 +181,33 @@ export class QtChartComponent implements OnChanges {
             ],
           },
           markArea: {
-            silent: true,
+            // silent: true,
             data: [
               [
                 {
-                  name: 'QT 1',
                   xAxis: this.qtInterval1['startTime'],
+                  itemStyle: {
+                    color: 'rgba(150, 230, 150, 0.4)',
+                  },
+                },
+                {
+                  xAxis: this.qtInterval1['R'],
+                },
+              ],
+              [
+                {
+                  xAxis: this.qtInterval1['R'],
+                  itemStyle: {
+                    color: 'rgba(150, 230, 150, 0.4)',
+                  },
+                },
+                {
+                  xAxis: this.qtInterval1['S'],
+                },
+              ],
+              [
+                {
+                  xAxis: this.qtInterval1['S'],
                   itemStyle: {
                     color: 'rgba(150, 230, 150, 0.4)',
                   },
@@ -197,8 +218,29 @@ export class QtChartComponent implements OnChanges {
               ],
               [
                 {
-                  name: 'QT 2',
                   xAxis: this.qtInterval2['startTime'],
+                  itemStyle: {
+                    color: 'rgba(150, 230, 150, 0.4)',
+                  },
+                },
+                {
+                  xAxis: this.qtInterval2['R'],
+                },
+              ],
+              [
+                {
+                  xAxis: this.qtInterval2['R'],
+                  itemStyle: {
+                    color: 'rgba(150, 230, 150, 0.4)',
+                  },
+                },
+                {
+                  xAxis: this.qtInterval2['S'],
+                },
+              ],
+              [
+                {
+                  xAxis: this.qtInterval2['S'],
                   itemStyle: {
                     color: 'rgba(150, 230, 150, 0.4)',
                   },

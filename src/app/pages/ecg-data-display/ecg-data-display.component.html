@@ -60,7 +60,10 @@
   (timeScaleChange)="onTimeScaleChange($event)"></app-time-scale>
 
 <div class="container">
-  <div class="row justify-content-end">
+  <div class="row justify-content-between">
+    <div class="col-lg-3">
+      <button class="btn btn-danger" (click)="removeAllIntervals()">Remove All Intervals</button>
+</div>
     <div class="col-lg-3">
       <!-- <label  class="form-label form-label-sm">Y Axis Zoom</label> -->
       <select class="form-select form-select-sm" aria-label="y-axis-zoom" (change)="updateYZoom($event.target)">
@@ -85,40 +88,49 @@
 <div class="container-fluid py-4" *ngIf="responseData._header || responseData.data">
   <div class="card">
     <div class="card-header">
-      <div class="row">
+      <div class="row justify-content-between">
         <div class="col" *ngIf="responseData._header">
           <b>{{responseData._header.signalInfo[selectedSeriesIndex].label}}</b>
         </div>
         <div class="col" *ngIf="responseData.data">
           <b>{{sampleNames[selectedSeriesIndex]}}</b>
         </div>
+        <div class="col text-center" *ngIf="AvQTc !== 0">
+          <b>Average QTc: </b>{{AvQTc}}
+        </div>
         <div class="col text-end"
           *ngIf="averageHr !== 0 && brushStrokes[selectedSeriesIndex].length !== 1 && brushStrokes[selectedSeriesIndex].length !== 0">
-          <span><i class="bi bi-heart-pulse-fill text-danger" placement="top"
-              ngbTooltip="Ave. HR = (RR.sum() / RR.lenght()) x 60000"></i> {{averageHr}} bpm</span>
+          <span><i class="bi bi-heart-pulse-fill text-danger" placement="top" data-bs-html="true"
+              ngbTooltip='This result is calculated from the selected Intervals. Ave. HR = (RR.sum() / RR.lenght()) x 60000'></i> {{averageHr}} bpm</span>
         </div>
       </div>
     </div>
     <ul class="list-group list-group-flush">
       <li class="list-group-item" *ngFor="let brush of brushStrokes[selectedSeriesIndex] | slice:1; index as i"
         (mouseover)="higlightRR(i)" (mouseout)="dimmRR(i)">
-        <h2><i class="bi bi-distribute-horizontal text-success me-2"></i> RR Interval {{i+1}} - {{brush['R'] -
-          brushStrokes[selectedSeriesIndex][i]['R']}} ms </h2>
         <div class="row">
-          <div class="col text-center" *ngIf="brush.Qtc[1]">
-            <b class="text-success" placement="top" ngbTooltip="QTc = QT / √RR">Bazett Qtc:</b> {{brush.Qtc[1]}}
-            ms
+          <div class="col-9 align-content-center">
+            <h3 class="m-0"><i class="bi bi-distribute-horizontal text-success me-2"></i> RR Interval {{i+1}} -
+              {{brush['R'] -
+              brushStrokes[selectedSeriesIndex][i]['R']}} ms </h3>
           </div>
-          <div class="col text-center" *ngIf="brush.Qtc[2]">
-            <b class="text-success" placement="top" ngbTooltip="QTc = QT + 0.154 * (1 - RR)">Framingham Qtc:</b>
-            {{brush.Qtc[2]}} ms
-          </div>
-          <div class="col text-center" *ngIf="brush.Qtc[3]">
-            <b class="text-success" placement="top" ngbTooltip="QTc = QT / 3√RR">Fridericia Qtc:</b>
-            {{brush.Qtc[3]}} ms
+          <div class="col-3">
+            <div class="row">
+              <div class="col-12" *ngIf="brush.Qtc[1]">
+                <b class="text-success" placement="top" ngbTooltip="QTc = QT / √RR">Bazett Qtc: </b>
+                <span class="text-end">{{brush.Qtc[1]}} ms </span>
+              </div>
+              <div class="col-12" *ngIf="brush.Qtc[2]">
+                <b class="text-success" placement="top" ngbTooltip="QTc = QT + 0.154 * (1 - RR)">Framingham Qtc: </b>
+                <span class="text-end">{{brush.Qtc[2]}} ms</span>
+              </div>
+              <div class="col-12" *ngIf="brush.Qtc[3]">
+                <b class="text-success" placement="top" ngbTooltip="QTc = QT / 3√RR">Fridericia Qtc: </b>
+                <span class="text-end">{{brush.Qtc[3]}} ms</span>
+              </div>
+            </div>
           </div>
         </div>
-        <hr>
         <div style="height: 150px;" *ngIf="smallCharts">
           <app-qt-chart [qtInterval1]="fetchQT(i)" [qtInterval2]="fetchQT(i+1)"
             [data]="fetchRRData(brushStrokes[selectedSeriesIndex][i]['startTime'], brushStrokes[selectedSeriesIndex][i+1].endTime)"></app-qt-chart>
@@ -133,99 +145,100 @@
           </div>
         </div>
         <div class="row pb-3">
-          <div class="col-12 mb-2">
-            <b>First QT Interval</b>
-          </div>
-          <div class="col">
+
+          <div class="col-lg-6">
             <div class="row">
-              <label for="start-time-{{i}}" class="col-md-3 col-form-label text-center">Q: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="start-time-{{i}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['startTime']"
-                  (change)="onIntervalTimeChange()" />
+              <div class="col-12 mb-2">
+                <b>First QT Interval</b>
+              </div>
+              <div class="col">
+                <div class="row">
+                  <label for="start-time-{{i}}" class="col-md-3 col-form-label text-center">Q: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="start-time-{{i}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['startTime']"
+                      (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="row">
+                  <label for="r-wave-{{i}}" class="col-md-3 col-form-label text-center">R: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="r-wave-{{i}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['R']" (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="row">
+                  <label for="s-wave-{{i}}" class="col-md-3 col-form-label text-center">S: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="s-wave-{{i}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['S']" (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="row">
+                  <label for="end-time-{{i}}" class="col-md-3 col-form-label text-center">T: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="end-time-{{i}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['endTime']" (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="col">
+          <div class="col-lg-6">
             <div class="row">
-              <label for="r-wave-{{i}}" class="col-md-3 col-form-label text-center">R: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="r-wave-{{i}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['R']"
-                  (change)="onIntervalTimeChange()" />
+              <div class="col-12 mb-2">
+                <b>Second QT Interval</b>
               </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="row">
-              <label for="s-wave-{{i}}" class="col-md-3 col-form-label text-center">S: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="s-wave-{{i}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['S']"
-                  (change)="onIntervalTimeChange()" />
+              <div class="col">
+                <div class="row">
+                  <label for="start-time-{{i+1}}" class="col-md-3 col-form-label text-center">Q: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="start-time-{{i+1}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['startTime']"
+                      (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="row">
-              <label for="end-time-{{i}}" class="col-md-3 col-form-label text-center">T: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="end-time-{{i}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['endTime']"
-                  (change)="onIntervalTimeChange()" />
+              <div class="col">
+                <div class="row">
+                  <label for="r-wave-{{i+1}}" class="col-md-3 col-form-label text-center">R: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="r-wave-{{i+1}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['R']" (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-        <hr>
-        <div class="row pb-3">
-          <div class="col-12 mb-2">
-            <b>Second QT Interval</b>
-          </div>
-          <div class="col">
-            <div class="row">
-              <label for="start-time-{{i+1}}" class="col-md-3 col-form-label text-center">Q: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="start-time-{{i+1}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['startTime']"
-                  (change)="onIntervalTimeChange()" />
+              <div class="col">
+                <div class="row">
+                  <label for="s-wave-{{i+1}}" class="col-md-3 col-form-label text-center">S: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="s-wave-{{i+1}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['S']" (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="row">
-              <label for="r-wave-{{i+1}}" class="col-md-3 col-form-label text-center">R: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="r-wave-{{i+1}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['R']"
-                  (change)="onIntervalTimeChange()" />
-              </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="row">
-              <label for="s-wave-{{i+1}}" class="col-md-3 col-form-label text-center">S: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="s-wave-{{i+1}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['S']"
-                  (change)="onIntervalTimeChange()" />
-              </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="row">
-              <label for="end-time-{{i+1}}" class="col-md-3 col-form-label text-center">T: </label>
-              <div class="col-md-9">
-                <input type="number" class="form-control" id="end-time-{{i+1}}"
-                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['endTime']"
-                  (change)="onIntervalTimeChange()" />
+              <div class="col">
+                <div class="row">
+                  <label for="end-time-{{i+1}}" class="col-md-3 col-form-label text-center">T: </label>
+                  <div class="col-md-9">
+                    <input type="number" class="form-control" id="end-time-{{i+1}}"
+                      [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['endTime']"
+                      (change)="onIntervalTimeChange()" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div class="row">
           <div class="col-12">
-            <button class="btn btn-danger" (click)="removeInterval(i)">Remove</button>
+            <button class="btn btn-danger" (click)="removeInterval(i+1)">Remove</button>
           </div>
         </div>
       </li>
