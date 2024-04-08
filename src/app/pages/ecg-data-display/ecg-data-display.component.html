@@ -113,19 +113,23 @@
             <h3 class="m-0"><i class="bi bi-distribute-horizontal text-success me-2"></i> RR Interval {{i+1}} -
               {{brush['R'] -
               brushStrokes[selectedSeriesIndex][i]['R']}} ms </h3>
+              <span class="text-secondary">Click on a point on the graph to copy to clipboard</span>
           </div>
           <div class="col-3">
             <div class="row">
-              <div class="col-12" *ngIf="brush.Qtc[1]">
+              <div class="col-12 d-flex justify-content-between" *ngIf="brush.Qtc[1]">
                 <b class="text-success" placement="top" ngbTooltip="QTc = QT / √RR">Bazett Qtc: </b>
+                <span>-</span>
                 <span class="text-end">{{brush.Qtc[1]}} ms </span>
               </div>
-              <div class="col-12" *ngIf="brush.Qtc[2]">
+              <div class="col-12 d-flex justify-content-between" *ngIf="brush.Qtc[2]">
                 <b class="text-success" placement="top" ngbTooltip="QTc = QT + 0.154 * (1 - RR)">Framingham Qtc: </b>
+                <span>-</span>
                 <span class="text-end">{{brush.Qtc[2]}} ms</span>
               </div>
-              <div class="col-12" *ngIf="brush.Qtc[3]">
+              <div class="col-12 d-flex justify-content-between" *ngIf="brush.Qtc[3]">
                 <b class="text-success" placement="top" ngbTooltip="QTc = QT / 3√RR">Fridericia Qtc: </b>
+                <span>-</span>
                 <span class="text-end">{{brush.Qtc[3]}} ms</span>
               </div>
             </div>
