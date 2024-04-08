@@ -39,18 +39,7 @@ export class QtChartComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['qtInterval1']) {
-      console.log('qtInterval1 changed');
-    }
-    if (changes['qtInterval2']) {
-      console.log('qtInterval2 changed');
-    }
-    if (changes['data']) {
-      console.log('data changed');
-    } 
-    if (changes['qtInterval1'] || changes['qtInterval2']) {
-      this.updateChart();
-    }
+
   }
 
   ngAfterViewInit(): void {
@@ -70,6 +59,7 @@ export class QtChartComponent implements OnChanges {
 
   updateChart() {
     this.option = {
+      animation: false,  
       xAxis: {
         min: this.data[0][0],
         max: this.data[this.data.length - 1][0],

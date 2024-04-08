@@ -37,6 +37,7 @@ export class EcgDataDisplayComponent
   selectedSeriesIndex = 0;
   averageHr = 0;
   sampleNames: string[] = [];
+  smallCharts: Boolean = true;
 
   brushStrokes: {
     startTime: number;
@@ -653,69 +654,87 @@ export class EcgDataDisplayComponent
     }
   }
 
-  onIntervalTimeChange(
-    brushs: {
-      startTime: number;
-      endTime: number;
-      R: number;
-      S: number;
-      Qtc: number[];
-    }[]
-  ): void {
-    
-    this.brushStrokes[this.selectedSeriesIndex] = brushs;
-    
+  onIntervalTimeChange(): void {
+    this.smallCharts = false;
+    this.cdRef.detectChanges();
+    // this.brushStrokes[this.selectedSeriesIndex] = brushs;
+
     let option = this.chart?.getOption();
 
     option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
     this.calculateQTc();
     this.markBrushStrokes();
+    this.smallCharts = true;
+    this.cdRef.detectChanges();
   }
 
   higlightRR(brushIndex: number) {
-    let option = this.chart?.getOption();
-    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
-      brushIndex
-    ][0]['itemStyle'] = {
-      color: 'rgba(150, 230, 150, 0.7)',
-    };
-    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
-      brushIndex+1
-    ][0]['itemStyle'] = {
-      color: 'rgba(150, 230, 150, 0.7)',
-    };
-    // option!['series']![this.selectedSeriesIndex]['markArea']['data'].push([
-    //   {
-    //     xAxis: this.brushStrokes[this.selectedSeriesIndex][brushIndex]['startTime'],
-    //     itemStyle: {
-    //       color: 'rgba(150, 150, 230, 0.4)',
-    //     },
-    //   },
-    //   {
-    //     xAxis: this.brushStrokes[this.selectedSeriesIndex][brushIndex+1]['endTime'],
-    //   },
-    // ]);
-    this.chart?.setOption(option!);
+    if (this.smallCharts) {
+      let option = this.chart?.getOption();
+      option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+        brushIndex
+      ][0]['itemStyle'] = {
+        color: 'rgba(150, 230, 150, 0.7)',
+      };
+      option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+        brushIndex + 1
+      ][0]['itemStyle'] = {
+        color: 'rgba(150, 230, 150, 0.7)',
+      };
+      option!['series']![this.selectedSeriesIndex]['markArea']['data'].push([
+        {
+          xAxis:
+            this.brushStrokes[this.selectedSeriesIndex][brushIndex][
+              'startTime'
+            ],
+          itemStyle: {
+            color: 'rgba(150, 150, 230, 0.4)',
+          },
+        },
+        {
+          xAxis:
+            this.brushStrokes[this.selectedSeriesIndex][brushIndex + 1][
+              'endTime'
+            ],
+        },
+      ]);
+      this.chart?.setOption(option!);
+    }
   }
 
   dimmRR(brushIndex: number) {
-    let option = this.chart?.getOption();
-    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
-      brushIndex
-    ][0]['itemStyle'] = {
-      color: 'rgba(150, 230, 150, 0.4)',
-    };
-    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
-      brushIndex+1
-    ][0]['itemStyle'] = {
-      color: 'rgba(150, 230, 150, 0.4)',
-    };
-    // option!['series']![this.selectedSeriesIndex]['markArea']['data'].pop();
-    this.chart?.setOption(option!);
+    if (this.smallCharts) {
+      let option = this.chart?.getOption();
+      option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+        brushIndex
+      ][0]['itemStyle'] = {
+        color: 'rgba(150, 230, 150, 0.4)',
+      };
+      option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+        brushIndex + 1
+      ][0]['itemStyle'] = {
+        color: 'rgba(150, 230, 150, 0.4)',
+      };
+
+      let markAreaData =
+        option!['series']![this.selectedSeriesIndex]['markArea']['data'];
+      console.log(markAreaData);
+
+      for (let i = 0; i < markAreaData.length; i++) {
+        if (
+          markAreaData[i][0]['itemStyle'] &&
+          markAreaData[i][0]['itemStyle']['color'] === 'rgba(150, 150, 230, 0.4)'
+        ) {
+          option!['series']![this.selectedSeriesIndex]['markArea']['data'].pop();
+        }
+      }
+
+      this.chart?.setOption(option!);
+    }
   }
 
   fetchQT(brushNumber: number) {
-    return this.brushStrokes[this.selectedSeriesIndex][brushNumber]
+    return this.brushStrokes[this.selectedSeriesIndex][brushNumber];
   }
 
   fetchRRData(startTime: number, endTime: number) {

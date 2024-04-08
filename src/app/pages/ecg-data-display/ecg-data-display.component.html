@@ -119,7 +119,7 @@
           </div>
         </div>
         <hr>
-        <div style="height: 150px;">
+        <div style="height: 150px;" *ngIf="smallCharts">
           <app-qt-chart [qtInterval1]="fetchQT(i)" [qtInterval2]="fetchQT(i+1)"
             [data]="fetchRRData(brushStrokes[selectedSeriesIndex][i]['startTime'], brushStrokes[selectedSeriesIndex][i+1].endTime)"></app-qt-chart>
         </div>
@@ -142,7 +142,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="start-time-{{i}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['startTime']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
@@ -152,7 +152,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="r-wave-{{i}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['R']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="s-wave-{{i}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['S']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
@@ -172,7 +172,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="end-time-{{i}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['endTime']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
@@ -188,7 +188,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="start-time-{{i+1}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['startTime']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
@@ -198,7 +198,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="r-wave-{{i+1}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['R']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
@@ -208,7 +208,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="s-wave-{{i+1}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['S']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
@@ -218,7 +218,7 @@
               <div class="col-md-9">
                 <input type="number" class="form-control" id="end-time-{{i+1}}"
                   [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['endTime']"
-                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+                  (change)="onIntervalTimeChange()" />
               </div>
             </div>
           </div>
