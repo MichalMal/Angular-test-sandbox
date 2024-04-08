@@ -388,11 +388,6 @@ export class EcgDataDisplayComponent
     this.chart?.setOption(option!, true);
   }
 
-  async onAcordianShown(panelId: string) {
-    await new Promise((f) => setTimeout(f, 100));
-    this.currentRenderedChart = panelId;
-  }
-
   handleDataZoom = (params: any) => {
     const { start, end } = this.getZoomValues(params);
     const zoomLevel = end - start;
@@ -659,68 +654,84 @@ export class EcgDataDisplayComponent
   }
 
   onIntervalTimeChange(
-    brush: {
+    brushs: {
       startTime: number;
       endTime: number;
       R: number;
       S: number;
       Qtc: number[];
-    }[],
-    accordionIndex: number
+    }[]
   ): void {
-    this.cdRef.detectChanges();
-
-    this.brushStrokes[this.selectedSeriesIndex] = brush;
-
-    this.accordion.toggle(`ngb-accordion-item-1`);
+    
+    this.brushStrokes[this.selectedSeriesIndex] = brushs;
+    
     let option = this.chart?.getOption();
 
     option!['series']![this.selectedSeriesIndex]['markArea']['data'] = [];
     this.calculateQTc();
     this.markBrushStrokes();
-    this.accordion.toggle(`ngb-accordion-item-${accordionIndex}`);
   }
 
-  higlightQT(brushIndex: number) {
+  higlightRR(brushIndex: number) {
     let option = this.chart?.getOption();
     option!['series']![this.selectedSeriesIndex]['markArea']['data'][
       brushIndex
     ][0]['itemStyle'] = {
       color: 'rgba(150, 230, 150, 0.7)',
     };
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+      brushIndex+1
+    ][0]['itemStyle'] = {
+      color: 'rgba(150, 230, 150, 0.7)',
+    };
+    // option!['series']![this.selectedSeriesIndex]['markArea']['data'].push([
+    //   {
+    //     xAxis: this.brushStrokes[this.selectedSeriesIndex][brushIndex]['startTime'],
+    //     itemStyle: {
+    //       color: 'rgba(150, 150, 230, 0.4)',
+    //     },
+    //   },
+    //   {
+    //     xAxis: this.brushStrokes[this.selectedSeriesIndex][brushIndex+1]['endTime'],
+    //   },
+    // ]);
     this.chart?.setOption(option!);
   }
 
-  dimmQT(brushIndex: number) {
+  dimmRR(brushIndex: number) {
     let option = this.chart?.getOption();
     option!['series']![this.selectedSeriesIndex]['markArea']['data'][
       brushIndex
     ][0]['itemStyle'] = {
       color: 'rgba(150, 230, 150, 0.4)',
     };
+    option!['series']![this.selectedSeriesIndex]['markArea']['data'][
+      brushIndex+1
+    ][0]['itemStyle'] = {
+      color: 'rgba(150, 230, 150, 0.4)',
+    };
+    // option!['series']![this.selectedSeriesIndex]['markArea']['data'].pop();
     this.chart?.setOption(option!);
   }
 
-  fetchQtData(brush: {
-    startTime: number;
-    endTime: number;
-    R: number;
-    S: number;
-    Qtc: number[];
-  }) {
+  fetchQT(brushNumber: number) {
+    return this.brushStrokes[this.selectedSeriesIndex][brushNumber]
+  }
+
+  fetchRRData(startTime: number, endTime: number) {
     let option = this.chart?.getOption();
 
     let startTimeIndex = option!['series']![this.selectedSeriesIndex][
       'data'
-    ].findIndex((sample) => sample[0] === brush.startTime);
+    ].findIndex((sample) => sample[0] === startTime);
+
     let endTimeIndex = option!['series']![this.selectedSeriesIndex][
       'data'
-    ].findIndex((sample) => sample[0] === brush.endTime);
+    ].findIndex((sample) => sample[0] === endTime);
 
     let filteredData = option!['series']![this.selectedSeriesIndex][
       'data'
     ].slice(startTimeIndex, endTimeIndex + 1);
-
     return filteredData;
   }
 

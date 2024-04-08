@@ -1,7 +1,8 @@
 import {
   Component,
   ElementRef,
-  EventEmitter,
+  OnChanges,
+  SimpleChanges,
   Input,
   Renderer2,
   RendererFactory2,
@@ -15,22 +16,59 @@ import { ToasterAlertService } from 'src/app/services/toaster-alert.service';
   templateUrl: './qt-chart.component.html',
   styleUrls: ['./qt-chart.component.scss'],
 })
-export class QtChartComponent {
+export class QtChartComponent implements OnChanges {
   @Input() data = [];
-  @Input() qtInterval = {};
+  @Input() qtInterval1 = {};
+  @Input() qtInterval2 = {};
   @ViewChild('chart') chartRef!: ElementRef;
-  // @Input() intervalTimeChange!: EventEmitter<any>;
 
   private chart: echarts.ECharts | undefined;
   private option: echarts.EChartsOption | null = null;
   private renderer: Renderer2;
   private resizeListener!: () => void;
 
-  constructor(private rendererFactory: RendererFactory2, private toasterService: ToasterAlertService) {
+  constructor(
+    private rendererFactory: RendererFactory2,
+    private toasterService: ToasterAlertService
+  ) {
     this.renderer = rendererFactory.createRenderer(null, null);
   }
 
   ngOnInit(): void {
+    this.updateChart();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['qtInterval1']) {
+      console.log('qtInterval1 changed');
+    }
+    if (changes['qtInterval2']) {
+      console.log('qtInterval2 changed');
+    }
+    if (changes['data']) {
+      console.log('data changed');
+    } 
+    if (changes['qtInterval1'] || changes['qtInterval2']) {
+      this.updateChart();
+    }
+  }
+
+  ngAfterViewInit(): void {
+    this.chart = echarts.init(this.chartRef.nativeElement);
+    this.resizeListener = this.renderer.listen('window', 'resize', () => {
+      this.chart?.resize();
+    });
+    this.chart?.getZr().on('click', this.handleGraphClick);
+    this.updateChart();
+  }
+
+  ngOnDestroy(): void {
+    if (this.resizeListener) {
+      this.resizeListener();
+    }
+  }
+
+  updateChart() {
     this.option = {
       xAxis: {
         min: this.data[0][0],
@@ -40,7 +78,7 @@ export class QtChartComponent {
         },
         axisLine: {
           lineStyle: {
-            color: "#000",
+            color: '#000',
           },
         },
         axisTick: {
@@ -124,7 +162,7 @@ export class QtChartComponent {
                   show: true,
                   color: '#f00',
                 },
-                xAxis: this.qtInterval['R'],
+                xAxis: this.qtInterval1['R'],
               },
               {
                 label: {
@@ -132,9 +170,58 @@ export class QtChartComponent {
                   show: true,
                   color: '#f00',
                 },
-                xAxis: this.qtInterval['S'],
+                xAxis: this.qtInterval1['S'],
+              },
+              {
+                label: {
+                  formatter: 'R',
+                  show: true,
+                  color: '#f00',
+                },
+                xAxis: this.qtInterval2['R'],
+              },
+              {
+                label: {
+                  formatter: 'S',
+                  show: true,
+                  color: '#f00',
+                },
+                xAxis: this.qtInterval2['S'],
               },
             ],
+          },
+          markArea: {
+            silent: true,
+            data: [
+              [
+                {
+                  name: 'QT 1',
+                  xAxis: this.qtInterval1['startTime'],
+                  itemStyle: {
+                    color: 'rgba(150, 230, 150, 0.4)',
+                  },
+                },
+                {
+                  xAxis: this.qtInterval1['endTime'],
+                },
+              ],
+              [
+                {
+                  name: 'QT 2',
+                  xAxis: this.qtInterval2['startTime'],
+                  itemStyle: {
+                    color: 'rgba(150, 230, 150, 0.4)',
+                  },
+                },
+                {
+                  xAxis: this.qtInterval2['endTime'],
+                },
+              ],
+            ],
+            label: {
+              position: 'insideTop',
+              color: '#000',
+          },
           },
           data: this.data.map((item: any) => {
             return [item[0], item[1]];
@@ -145,24 +232,6 @@ export class QtChartComponent {
         },
       ],
     };
-  }
-
-  ngAfterViewInit(): void {
-    this.chart = echarts.init(this.chartRef.nativeElement);
-    this.resizeListener = this.renderer.listen('window', 'resize', () => {
-      this.chart?.resize();
-    });
-    this.chart?.getZr().on('click', this.handleGraphClick);
-    this.updateChart();
-  }
-
-  ngOnDestroy(): void {
-    if (this.resizeListener) {
-      this.resizeListener();
-    }
-  }
-
-  updateChart() {
     this.chart?.setOption(this.option!);
   }
 
@@ -183,9 +252,12 @@ export class QtChartComponent {
       var xAxisValue = closestSample[0];
 
       navigator.clipboard.writeText(xAxisValue.toString()).then(
-         () => {
+        () => {
           console.log('Copying to clipboard was successful!');
-          this.toasterService.showSuccess("Copied value to clipboard", "Success");
+          this.toasterService.showSuccess(
+            'Copied value to clipboard',
+            'Success'
+          );
         },
         function (err) {
           console.error('Could not copy text: ', err);

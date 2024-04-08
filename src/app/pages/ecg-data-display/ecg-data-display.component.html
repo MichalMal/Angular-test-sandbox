@@ -56,8 +56,7 @@
 <app-time-scale *ngIf="responseData._header" [timeScale]="timeScale"
   [dateTimeOfRecord]="responseData._header.recordingDate"
   (timeScaleChange)="onTimeScaleChange($event)"></app-time-scale>
-  <app-time-scale *ngIf="responseData.data" [timeScale]="timeScale"
-  [dateTimeOfRecord]="responseData.recordedAt"
+<app-time-scale *ngIf="responseData.data" [timeScale]="timeScale" [dateTimeOfRecord]="responseData.recordedAt"
   (timeScaleChange)="onTimeScaleChange($event)"></app-time-scale>
 
 <div class="container">
@@ -75,9 +74,13 @@
   </div>
 </div>
 
-<div class="chart-block container-fluid sticky-top bg-white" style="overflow-x: hidden;" *ngIf="responseData._header || responseData.data">
+<div class="chart-block container-fluid sticky-top bg-white" style="overflow-x: hidden;"
+  *ngIf="responseData._header || responseData.data">
   <div #chart style="width: 100%; height: 400px;"></div>
 </div>
+
+
+
 
 <div class="container-fluid py-4" *ngIf="responseData._header || responseData.data">
   <div class="card">
@@ -91,16 +94,186 @@
         </div>
         <div class="col text-end"
           *ngIf="averageHr !== 0 && brushStrokes[selectedSeriesIndex].length !== 1 && brushStrokes[selectedSeriesIndex].length !== 0">
-          <span><i class="bi bi-heart-pulse-fill text-danger" placement="top" ngbTooltip="Ave. HR = (RR.sum() / RR.lenght()) x 60000"></i> {{averageHr}} bpm</span>
+          <span><i class="bi bi-heart-pulse-fill text-danger" placement="top"
+              ngbTooltip="Ave. HR = (RR.sum() / RR.lenght()) x 60000"></i> {{averageHr}} bpm</span>
+        </div>
+      </div>
+    </div>
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item" *ngFor="let brush of brushStrokes[selectedSeriesIndex] | slice:1; index as i"
+        (mouseover)="higlightRR(i)" (mouseout)="dimmRR(i)">
+        <h2><i class="bi bi-distribute-horizontal text-success me-2"></i> RR Interval {{i+1}} - {{brush['R'] -
+          brushStrokes[selectedSeriesIndex][i]['R']}} ms </h2>
+        <div class="row">
+          <div class="col text-center" *ngIf="brush.Qtc[1]">
+            <b class="text-success" placement="top" ngbTooltip="QTc = QT / √RR">Bazett Qtc:</b> {{brush.Qtc[1]}}
+            ms
+          </div>
+          <div class="col text-center" *ngIf="brush.Qtc[2]">
+            <b class="text-success" placement="top" ngbTooltip="QTc = QT + 0.154 * (1 - RR)">Framingham Qtc:</b>
+            {{brush.Qtc[2]}} ms
+          </div>
+          <div class="col text-center" *ngIf="brush.Qtc[3]">
+            <b class="text-success" placement="top" ngbTooltip="QTc = QT / 3√RR">Fridericia Qtc:</b>
+            {{brush.Qtc[3]}} ms
+          </div>
+        </div>
+        <hr>
+        <div style="height: 150px;">
+          <app-qt-chart [qtInterval1]="fetchQT(i)" [qtInterval2]="fetchQT(i+1)"
+            [data]="fetchRRData(brushStrokes[selectedSeriesIndex][i]['startTime'], brushStrokes[selectedSeriesIndex][i+1].endTime)"></app-qt-chart>
+        </div>
+        <hr>
+        <div class="row">
+          <div class="col-12">
+            <p class="text-secondary text-center">
+              Please note that the R and S waves are predicted and may not be accurate. Please verify the
+              values.
+            </p>
+          </div>
+        </div>
+        <div class="row pb-3">
+          <div class="col-12 mb-2">
+            <b>First QT Interval</b>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="start-time-{{i}}" class="col-md-3 col-form-label text-center">Q: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="start-time-{{i}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['startTime']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="r-wave-{{i}}" class="col-md-3 col-form-label text-center">R: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="r-wave-{{i}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['R']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="s-wave-{{i}}" class="col-md-3 col-form-label text-center">S: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="s-wave-{{i}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['S']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="end-time-{{i}}" class="col-md-3 col-form-label text-center">T: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="end-time-{{i}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i]['endTime']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr>
+        <div class="row pb-3">
+          <div class="col-12 mb-2">
+            <b>Second QT Interval</b>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="start-time-{{i+1}}" class="col-md-3 col-form-label text-center">Q: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="start-time-{{i+1}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['startTime']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="r-wave-{{i+1}}" class="col-md-3 col-form-label text-center">R: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="r-wave-{{i+1}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['R']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="s-wave-{{i+1}}" class="col-md-3 col-form-label text-center">S: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="s-wave-{{i+1}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['S']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="row">
+              <label for="end-time-{{i+1}}" class="col-md-3 col-form-label text-center">T: </label>
+              <div class="col-md-9">
+                <input type="number" class="form-control" id="end-time-{{i+1}}"
+                  [(ngModel)]="brushStrokes[selectedSeriesIndex][i+1]['endTime']"
+                  (change)="onIntervalTimeChange(brushStrokes[selectedSeriesIndex])" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-12">
+            <button class="btn btn-danger" (click)="removeInterval(i)">Remove</button>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<div class="container-fluid py-4" *ngIf="responseData._header || responseData.data">
+  <div class="card">
+    <div class="card-header">
+      <div class="row">
+        <div class="col" *ngIf="responseData._header">
+          <b>{{responseData._header.signalInfo[selectedSeriesIndex].label}}</b>
+        </div>
+        <div class="col" *ngIf="responseData.data">
+          <b>{{sampleNames[selectedSeriesIndex]}}</b>
+        </div>
+        <div class="col text-end"
+          *ngIf="averageHr !== 0 && brushStrokes[selectedSeriesIndex].length !== 1 && brushStrokes[selectedSeriesIndex].length !== 0">
+          <span><i class="bi bi-heart-pulse-fill text-danger" placement="top"
+              ngbTooltip="Ave. HR = (RR.sum() / RR.lenght()) x 60000"></i> {{averageHr}} bpm</span>
         </div>
       </div>
     </div>
 
     <div ngbAccordion [closeOthers]="true" [animation]="false" #accordion="ngbAccordion">
       <div ngbAccordionItem *ngFor="let brush of brushStrokes[selectedSeriesIndex]; index as i"
-        (mouseover)="higlightQT(i)" (mouseout)="dimmQT(i)" (shown)="onAcordianShown('qt-chart-' + i)" (hide)="currentRenderedChart = ''">
+        (mouseover)="higlightQT(i)" (mouseout)="dimmQT(i)" (shown)="onAcordianShown('qt-chart-' + i)"
+        (hide)="currentRenderedChart = ''">
         <h2 ngbAccordionHeader>
-          <button ngbAccordionButton><i class="bi bi-distribute-horizontal text-success me-2"></i> QT Interval {{i+1}} -
+          <button ngbAccordionButton><i class="bi bi-distribute-horizontal text-success me-2"></i> RR Interval
+            {{i+1}}
+            -
             {{brush.endTime - brush.startTime}} ms</button>
         </h2>
         <div ngbAccordionCollapse>
@@ -108,24 +281,31 @@
             <ng-template>
               <div class="row">
                 <div class="col text-center" *ngIf="brush.Qtc[1]">
-                  <b class="text-success" placement="top" ngbTooltip="QTc = QT / √RR">Bazett Qtc:</b> {{brush.Qtc[1]}} ms
+                  <b class="text-success" placement="top" ngbTooltip="QTc = QT / √RR">Bazett Qtc:</b>
+                  {{brush.Qtc[1]}}
+                  ms
                 </div>
                 <div class="col text-center" *ngIf="brush.Qtc[2]">
-                  <b class="text-success" placement="top" ngbTooltip="QTc = QT + 0.154 * (1 - RR)">Framingham Qtc:</b> {{brush.Qtc[2]}} ms
+                  <b class="text-success" placement="top" ngbTooltip="QTc = QT + 0.154 * (1 - RR)">Framingham
+                    Qtc:</b>
+                  {{brush.Qtc[2]}} ms
                 </div>
                 <div class="col text-center" *ngIf="brush.Qtc[3]">
-                  <b class="text-success" placement="top" ngbTooltip="QTc = QT / 3√RR">Fridericia Qtc:</b> {{brush.Qtc[3]}} ms
+                  <b class="text-success" placement="top" ngbTooltip="QTc = QT / 3√RR">Fridericia Qtc:</b>
+                  {{brush.Qtc[3]}} ms
                 </div>
               </div>
               <hr>
               <div style="height: 150px;">
-              <app-qt-chart *ngIf="currentRenderedChart === 'qt-chart-' + i" [qtInterval]="brush" [data]="fetchQtData(brush)"></app-qt-chart>
+                <app-qt-chart *ngIf="currentRenderedChart === 'qt-chart-' + i" [qtInterval]="brush"
+                  [data]="fetchQtData(brush)"></app-qt-chart>
               </div>
               <hr>
               <div class="row">
                 <div class="col-12">
                   <p class="text-secondary text-center">
-                    Please note that the R and S waves are predicted and may not be accurate. Please verify the values.
+                    Please note that the R and S waves are predicted and may not be accurate. Please verify the
+                    values.
                   </p>
                 </div>
                 <div class="col">
@@ -169,11 +349,11 @@
                   </div>
                 </div>
               </div>
-             <div class="row">
-              <div class="col-12">
-                <button class="btn btn-danger" (click)="removeInterval(i)">Remove</button>
+              <div class="row">
+                <div class="col-12">
+                  <button class="btn btn-danger" (click)="removeInterval(i)">Remove</button>
+                </div>
               </div>
-             </div>
             </ng-template>
           </div>
         </div>
@@ -181,8 +361,11 @@
     </div>
   </div>
 </div>
+ -->
+
+
+
 
 <div *ngIf="isLoading" class="loading-screen">
   <p>Loading...</ p>
 </div>
-
